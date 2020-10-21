@@ -396,3 +396,183 @@ def count_attribute(df, att, by_att=None, norm=False, where=None, dd={}, plot=Fa
         plt.title(title)
         plt.show()        
     return counts
+
+def stats_impact(fit):
+    import numpy as np
+    from .bayesoc import Outcome, Model
+    import pandas as pd
+    m = 2
+    k = 4
+    def foo(x): return np.diff(np.hstack([0, np.exp(x)/(1+np.exp(x)), 1]))
+    df = Model(Outcome()).get_posterior_samples(fit=fit)
+    prob = []
+    names = ['Yes, definitely', 'Unsure, lean yes', 'Unsure, lean no', 'No, definitely not']
+    for i in range(1, m+1):
+        alpha = df[['alpha[%i,%i]'%(i, j) for j in range(1, k)]].values
+        p = []
+        for a in alpha: p.append(foo(a))
+        p = np.vstack(p)
+        prob.append(pd.DataFrame(p, columns=names))
+    prob.append(prob[1]-prob[0])
+    groups = ['Pre Exposure', 'Post Exposure', 'Post-Pre']
+    out = pd.concat({groups[i]: prob[i].describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']] for i in range(len(groups))})
+    return out
+
+def stats_impact_causal(fit):
+    import numpy as np
+    from .bayesoc import Outcome, Model
+    import pandas as pd
+    m = 2
+    k = 4
+    def foo(x): return np.diff(np.hstack([0, np.exp(x)/(1+np.exp(x)), 1]))
+    df = Model(Outcome()).get_posterior_samples(fit=fit)
+    prob = []
+    dfs = [[], [], []]
+    names = ['Yes, definitely', 'Unsure, lean yes', 'Unsure, lean no', 'No, definitely not']
+    for i in range(1, m+1):        
+        beta = np.hstack([np.zeros((df.shape[0],1)), df[['beta[%i]'%i]].values*df[['delta[%i,%i]'%(i, j) for j in range(1, k)]].values.cumsum(axis=1)])
+        alpha = df[['alpha[%i,%i]'%(i, j) for j in range(1, k)]].values
+        p = []
+        for (a, b) in zip(alpha, beta): p.append(np.array([foo(a-b_) for b_ in b]))
+        prob.append(np.dstack(p))
+        for j in range(k):
+            dfs[i-1].append(pd.DataFrame(prob[-1][j].T, columns=names).describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']])
+    diff = prob[1]-prob[0]
+    for i in range(k):
+        dfs[-1].append(pd.DataFrame(diff[i].T, columns=names).describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']])
+    groups = ['Control', 'Treatment', 'Treatment-Control']
+    out = pd.concat({groups[i]: pd.concat({names[j]: dfs[i][j] for j in range(len(names))}) for i in range(len(groups))})
+    return out
+
+def plot_stats(df1, df2=None, demos=False, oddsratio=True, title='', title_l='', title_r='', xlab='', xlab_l='', xlab_r='', tick_suffix='', label_suffix='', ylabel=True, factor=0.3, signsize=10, ticksize=10, labelsize=12, titlesize=14, hspace=0.2, wspace=0.05, align_labels=False):
+    import matplotlib.pyplot as plt
+    import numpy as np
+    dem = ['Age', 'Gender', 'Education', 'Employment', 'Religion', 'Political', 'Ethnicity', 'Income']
+    atts = list(df1.index)
+    if not demos: atts = [i for i in atts if i[0] not in dem]
+    att_cat = {}
+    for att in atts:
+        if ':' in att[0]:
+            key, val = tuple(att[0].split(':'))
+            if key in att_cat:
+                att_cat[key]['idx'].append(att)
+                att_cat[key]['val'].append(val+tick_suffix)
+            else: att_cat[key] = {'idx': [att], 'val': [val+tick_suffix]}
+        else:
+            if att[0] in att_cat:
+                att_cat[att[0]]['idx'].append(att)
+                att_cat[att[0]]['val'].append(att[1]+tick_suffix)
+            else: att_cat[att[0]] = {'idx': [att], 'val': [att[1]+tick_suffix]}
+                
+    rows = len(att_cat)
+    rows_per = [len(att_cat[k]['idx']) for k in att_cat]
+    cols = 2-int(df2 is None)
+    fig, ax = plt.subplots(nrows=rows, ncols=cols, dpi=180, sharex='col', figsize=(6, factor*sum(rows_per)),
+                           gridspec_kw={'height_ratios': rows_per}, constrained_layout=not(bool(xlab)))
+    if len(ax.shape)==1:
+        if df2 is None: ax = ax[:,np.newaxis]
+        else: ax = ax[np.newaxis,:]
+    names = list(att_cat.keys())
+    
+    def plot_bars(ax, tmp, ticks=[], right=False, base=False):
+        num = tmp.shape[0]
+        if base:
+            ax.barh(y=list(range(num+1, num+2-base, -1))+list(range(num+1-base, 0, -1)), width=tmp['mean'].values, xerr=np.vstack([(tmp['mean']-tmp['2.5%']).values, (tmp['97.5%']-tmp['mean']).values]), color='salmon')
+            ax.text(0, num+2-base, 'REFERENCE', size=ticksize)
+        else: ax.barh(y=range(num, 0, -1), width=tmp['mean'].values, xerr=np.vstack([(tmp['mean']-tmp['2.5%']).values, (tmp['97.5%']-tmp['mean']).values]), color='salmon')
+        ax.axvline(oddsratio, ls='--', color='black')
+        for i in range(num):
+            lb, ub = tmp['2.5%'][tmp.index[i]], tmp['97.5%'][tmp.index[i]]
+            if not (lb<oddsratio<ub):
+                if lb<0: ax.text(lb, num-i, '*', size=signsize)
+                else: ax.text(ub, num-i, '*', size=signsize)
+        if ticks: t = range(1, num+1)
+        else: t = []
+        ax.yaxis.set_ticklabels(reversed(ticks))
+        ax.yaxis.set_ticks(t)
+        if right: ax.yaxis.tick_right()
+    
+    for i in range(rows):
+        tmp = df1.loc[att_cat[names[i]]['idx']]
+        #if names[i] in dem: plot_bars(ax[i,0], tmp, list(dd[names[i]].values()), base=base[names[i]])
+        #else: plot_bars(ax[i,0], tmp, att_cat[names[i]]['val'])
+        plot_bars(ax[i,0], tmp, att_cat[names[i]]['val'])
+        if ylabel: ax[i,0].set_ylabel(names[i]+label_suffix, fontweight='bold', fontsize=labelsize)
+        #else: plot_bars(ax[i], tmp, att_cat[names[i]]['val'])
+        if df2 is not None:
+            try: c1 = tmp['counts'].values
+            except: c1 = []
+            tmp = df2.loc[att_cat[names[i]]['idx']]
+            try: c2 = tmp['counts'].values
+            except: c2 = []
+            plot_bars(ax[i,1], tmp, ['%i, %i'%(a, b) for a, b in zip(c1, c2)], right=True)
+            #plot_bars(ax[i,1], tmp)
+            if i==0:
+                if title_l: ax[i,0].set_title(title_l)
+                if title_r: ax[i,1].set_title(title_r)
+    if align_labels: fig.align_ylabels()
+    if title: plt.suptitle(title, fontsize=titlesize)
+    if xlab_l and xlab_r:
+        ax[i,0].set_xlabel(xlab_l, fontsize=labelsize)
+        ax[i,1].set_xlabel(xlab_r, fontsize=labelsize)
+    if xlab:
+        fig.add_subplot(111, frameon=False)
+        plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
+        plt.xlabel(xlab, fontsize=labelsize)
+        plt.subplots_adjust(hspace=hspace, wspace=wspace)
+    #fig.tight_layout()
+    plt.show()
+    return
+
+def plot_causal_flow(df, df_T, df_C, title='', save=''):
+    def plot_sankey(group, dat):
+        import plotly.graph_objects as go
+        src, tgt, val = [], [], []
+        labs = ['Yes, definitely', 'Unsure, lean yes', 'Unsure, lean no', 'No, definitely not']*2
+        for i in range(4):
+            for j in range(4, 8):
+                src.append(i)
+                tgt.append(j)
+                val.append(df.loc[(group,labs[i],labs[j]), 'mean']*dat.loc[('Pre Exposure',labs[i]), 'mean'])
+        fig = go.Figure(data=[go.Sankey( 
+        node = dict(pad=15, thickness=40, line=dict(color='salmon', width=0.5), color='salmon',
+                    label=['[%i] %s'%(round(100*y), x) for x, y in zip(labs[:4], dat.loc['Pre Exposure', 'mean'])]+['%s [%i]'%(x, round(100*y)) for x, y in zip(labs[4:], dat.loc['Post Exposure', 'mean'])]),
+        link = dict(source=src, target=tgt, value=val))])
+        fig.update_layout(title_text='%s %s'%(title, group), font_size=20)
+        fig.show()
+        if save: fig.write_image('%s_%s.png'%(save, group), scale=4)
+    plot_sankey('Treatment', df_T)
+    plot_sankey('Control', df_C)
+
+def stats_socdem(fit, dd, df, atts=[], group=None, oddsratio=True, title='Trust in Source'):
+    import numpy as np
+    import pandas as pd
+    from .bayesoc import Dim, Outcome, Model
+    import matplotlib.pyplot as plt
+    cats = ['Age', 'Gender', 'Education', 'Employment', 'Religion', 'Political', 'Ethnicity', 'Income']
+    if isinstance(atts, str): atts = [atts]
+    for att in atts: cats += [x for x in list(df) if x[:len(att)]==att]
+    outs = ['Vaccine Intent for self (Pre)', 'Vaccine Intent for self (Post)', 'Treatment']
+    bases = [1]*len(cats) #default reference category for all socio-demographics
+    bases[2] = 5 #reference category for education
+    bases[7] = 5 #reference category for income
+    tmp = Model(Outcome())
+    stats = {}
+    counts_all = {}
+    def foo(x): return np.exp(x)
+    for cat, base in zip(cats, bases):
+        vals = np.sort(list(dd[cat].keys()))
+        if group is None: counts = df[cat].value_counts().loc[vals]
+        else: counts = df[df['Treatment']==group][cat].value_counts().loc[vals]
+        counts.index = [dd[cat][k] for k in vals]
+        counts_all[cat] = counts.iloc[list(range(base-1))+list(range(base, len(vals)))]
+        dim = Dim(name=cat)
+        stats[cat] = tmp.get_posterior_samples(pars=['beta_%s[%i]'%(dim.name, i+1) for i in range(len(dd[cat]))], contrast='beta_%s[%i]'%(dim.name, base), fit=fit)
+        if oddsratio: stats[cat] = stats[cat].apply(foo)
+        stats[cat] = stats[cat].describe(percentiles=[0.025, 0.5, 0.975]).T[['mean', '2.5%', '97.5%']]
+        stats[cat].drop('chain', inplace=True)
+        stats[cat].index = counts_all[cat].index
+    stats = pd.concat(stats)
+    counts = pd.concat(counts_all)
+    counts.name = 'counts'
+    return stats.merge(counts.to_frame(), left_index=True, right_index=True)
