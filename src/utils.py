@@ -348,7 +348,7 @@ def count_attribute(df, att, by_att=None, norm=False, where=None, dd={}, plot=Fa
         dpi (:obj:`int`): if plotting, dpi for figure; default=90
 
     Returns:
-        A :obj:`pd.DataFrame` with 2-level index whose outer index corresponds to soc-demo name, inner index to soc-demo value, and columns correspond to % and counts across categories of variable of interest
+        A :obj:`pd.DataFrame`/:obj:`pd.Series` whose index corresponds to att and columns to by_att
     '''
     if where is not None:
         if not isinstance(where, list): where = [where]
