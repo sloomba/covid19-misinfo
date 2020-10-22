@@ -444,11 +444,17 @@ def stats_impact_causal(fit):
     out = pd.concat({groups[i]: pd.concat({names[j]: dfs[i][j] for j in range(len(names))}) for i in range(len(groups))})
     return out
 
-def plot_stats(df1, df2=None, demos=False, oddsratio=True, title='', title_l='', title_r='', xlab='', xlab_l='', xlab_r='', tick_suffix='', label_suffix='', ylabel=True, factor=0.3, signsize=10, ticksize=10, labelsize=12, titlesize=14, hspace=0.2, wspace=0.05, align_labels=False):
+def plot_stats(df1, df2=None, demos=False, oddsratio=True, title='', title_l='', title_r='', xlab='', xlab_l='', xlab_r='', tick_suffix='', label_suffix='', ylabel=True, factor=0.3, signsize=10, ticksize=10, labelsize=12, titlesize=14, hspace=0.2, wspace=0.05, align_labels=False, title_loc=0.0):
     import matplotlib.pyplot as plt
     import numpy as np
     dem = ['Age', 'Gender', 'Education', 'Employment', 'Religion', 'Political', 'Ethnicity', 'Income']
     atts = list(df1.index)
+    if not isinstance(atts[0], tuple):
+        from pandas import concat
+        df1 = concat({'tmp': df1})
+        if df2 is not None: df2 = concat({'tmp': df2})
+        atts = list(df1.index)
+        ylabel = False
     if not demos: atts = [i for i in atts if i[0] not in dem]
     att_cat = {}
     for att in atts:
@@ -511,7 +517,7 @@ def plot_stats(df1, df2=None, demos=False, oddsratio=True, title='', title_l='',
                 if title_l: ax[i,0].set_title(title_l)
                 if title_r: ax[i,1].set_title(title_r)
     if align_labels: fig.align_ylabels()
-    if title: plt.suptitle(title, fontsize=titlesize)
+    if title: plt.suptitle(title, fontsize=titlesize, y=1+title_loc)
     if xlab_l and xlab_r:
         ax[i,0].set_xlabel(xlab_l, fontsize=labelsize)
         ax[i,1].set_xlabel(xlab_r, fontsize=labelsize)
@@ -569,10 +575,163 @@ def stats_socdem(fit, dd, df, atts=[], group=None, oddsratio=True, title='Trust 
         dim = Dim(name=cat)
         stats[cat] = tmp.get_posterior_samples(pars=['beta_%s[%i]'%(dim.name, i+1) for i in range(len(dd[cat]))], contrast='beta_%s[%i]'%(dim.name, base), fit=fit)
         if oddsratio: stats[cat] = stats[cat].apply(foo)
-        stats[cat] = stats[cat].describe(percentiles=[0.025, 0.5, 0.975]).T[['mean', '2.5%', '97.5%']]
+        stats[cat] = stats[cat].describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']]
         stats[cat].drop('chain', inplace=True)
         stats[cat].index = counts_all[cat].index
     stats = pd.concat(stats)
     counts = pd.concat(counts_all)
     counts.name = 'counts'
     return stats.merge(counts.to_frame(), left_index=True, right_index=True)
+
+def stats_image_perceptions(fit, num_levels=5):
+    import numpy as np
+    import pandas as pd
+    from .bayesoc import Outcome, Model
+    def foo(x): return np.diff(np.hstack([0, np.exp(x)/(1+np.exp(x)), 1]))
+    tmp = Model(Outcome())
+    out = {}
+    for i in range(len(fit)):
+        out[i+1] = {}
+        for m in fit[i]:
+            df = tmp.get_posterior_samples(fit=fit[i][m])
+            out[i+1][m] = pd.DataFrame(np.array([foo(x) for x in df[['alpha[%i]'%(i+1) for i in range(num_levels-1)]].values]), columns= ['p[%i]'%(j+1) for j in range(num_levels)]).describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']]
+        out[i+1] = pd.concat(out[i+1])
+    return pd.concat(out)
+
+def plot_image_perceptions(df, ylab=[], imagewise=False, legend_loc=0.1):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import matplotlib
+    
+    if not isinstance(df, list): df = [df]
+    questions = {'Vaccine Intent': 'Raises Vaccine Intent', 'Agreement': 'Agree with', 'Trust': 'Have trust in', 'Fact-check': 'Will fact-check', 'Share': 'Will share'}
+    categories = dict(zip(['p[%i]'%(i+1) for i in range(5)], ['Strongly disagree', 'Somewhat disagree', 'Neither', 'Somewhat agree', 'Strongly agree']))
+    
+    def survey(results, category_names, ax=None):
+        """
+        Parameters
+        ----------
+        results : dict
+            A mapping from question labels to a list of answers per category.
+            It is assumed all lists contain the same number of entries and that
+            it matches the length of *category_names*.
+        category_names : list of str
+            The category labels.
+        """
+        # Ref: https://matplotlib.org/3.1.1/gallery/lines_bars_and_markers/horizontal_barchart_distribution.html
+        labels = list(results.keys())
+        data = np.array(list(results.values()))
+        data_cum = data.cumsum(axis=1)
+        category_colors = plt.get_cmap('RdYlBu')(np.linspace(0.15, 0.85, data.shape[1]))
+
+        if ax is None: fig, ax = plt.subplots(dpi=90, figsize=(5, 5))
+        ax.invert_yaxis()
+        ax.xaxis.set_visible(False)
+        ax.set_xlim(0, np.sum(data, axis=1).max())
+
+        for i, (colname, color) in enumerate(zip(category_names, category_colors)):
+            widths = data[:, i]
+            starts = data_cum[:, i] - widths
+            ax.barh(labels, widths, left=starts, height=0.5, label=colname, color=color)
+            xcenters = starts + widths / 2
+            r, g, b, _ = color
+            text_color = 'white' if r * g * b < 0.5 else 'dimgray'
+            for y, (x, c) in enumerate(zip(xcenters, widths)):
+                ax.text(x, y, str(int(100*c)), ha='center', va='center', color=text_color)
+        return ax
+    
+    matplotlib.rc('font', size=18)
+    nrows = len(df)
+    fig, ax = plt.subplots(nrows=nrows, ncols=5, dpi=90, figsize=(25, 5*nrows))#, constrained_layout=True)
+    ax_sup = fig.add_subplot(111, frameon=False)
+    plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
+    #plt.subplots_adjust(hspace=hspace, wspace=wspace)
+    if nrows==1: ax = ax[np.newaxis,:]
+    if imagewise:
+        for p in range(nrows):
+            for i in range(5):
+                results = {questions[j]: df[p]['mean'][(i+1, j)][list(categories.keys())].values for j in questions}
+                results['Raises Vaccine Intent'] = results['Raises Vaccine Intent'][::-1]
+                survey(results, categories.values(), ax[p,i])
+                if p==0: ax[p,i].set_title('Image %i'%(i+1))
+                if i==0 and ylab: ax[p,i].set_ylabel(ylab[p], fontsize=24, fontweight='bold')
+    else:
+        for p in range(nrows):
+            flag = True
+            for j, a in zip(questions, ax[p]):
+                if j=='Vaccine Intent': results = {'Img %i'%(i+1): df[p]['mean'][(i+1, j)][list(categories.keys())].values[::-1] for i in range(5)}
+                else: results = {'Img %i'%(i+1): df[p]['mean'][(i+1, j)][list(categories.keys())].values for i in range(5)}
+                survey(results, categories.values(), a)
+                if p==0: a.set_title(questions[j])
+                if flag and ylab:
+                    a.set_ylabel(ylab[p], fontsize=24, fontweight='bold')
+                    flag = False
+    plt.tight_layout()
+    handles, labels = ax[0,0].get_legend_handles_labels()
+    ax_sup.legend(handles=handles, labels=labels, ncol=5, bbox_to_anchor=(0, -legend_loc), loc='lower left', fontsize=22.5)
+    plt.show()
+
+def stats_image_impact(fit, oddsratio=False, plot=False, num_metrics=5, num_images=5):
+    import numpy as np
+    import pandas as pd
+    from .bayesoc import Outcome, Model
+    tmp = Model(Outcome())
+    pars = ['beta[%i]'%(i+1) for i in range(num_metrics)]
+    if plot: tmp.plot_posterior_pairs(fit=fit, pars=pars)
+    pars2 = ['gamma[%i]'%(i+1) for i in range(num_images)]
+    df = tmp.get_posterior_samples(pars=pars, fit=fit)
+    def foo(x): return np.exp(x)
+    if oddsratio: return df[pars].apply(foo).merge(tmp.get_posterior_samples(pars=pars2, fit=fit)[pars2], left_index=True, right_index=True).describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']]
+    else: return df[pars].merge(tmp.get_posterior_samples(pars=pars2, fit=fit)[pars2], left_index=True, right_index=True).describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']]
+
+def stats_filterbubble(fit, contrast=False):
+    import numpy as np
+    from .bayesoc import Outcome, Model
+    import pandas as pd
+    m = 2
+    k = 4
+    def foo(x): return np.diff(np.hstack([0, np.exp(x)/(1+np.exp(x)), 1]))
+    df = Model(Outcome()).get_posterior_samples(fit=fit)
+    beta = df[['beta[%i]'%i for i in range(1, k+1)]].values
+    alpha = df[['alpha[%i]'%i for i in range(1, m)]].values
+    p = []
+    for (a, b) in zip(alpha, beta): p.append(np.array([foo(a-b_) for b_ in b]))
+    p = np.dstack(p)[:,-1,:]
+    if contrast:
+        p = (p-p[0])[1:]
+        names = ['Unsure, lean yes', 'Unsure, lean no', 'No, definitely not']
+    else: names = ['Yes, definitely', 'Unsure, lean yes', 'Unsure, lean no', 'No, definitely not']
+    out = pd.concat([pd.DataFrame(p[i].T, columns=['Yes']).describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']] for i in range(len(names))])
+    out.index = names
+    return out
+
+def combine_dfs(df_l, df_r, lsuffix='(1)', rsuffix='(2)', collapse=True, perc=False, atts=[]):
+    if collapse:
+        def foo(df):
+            import pandas as pd
+            out = []
+            for x, (lb, ub) in zip(df['mean'].values, zip(df['2.5%'].values, df['97.5%'].values)):
+                if perc: out.append('%.1f (%.1f, %.1f)'%(100*x, 100*lb, 100*ub))
+                else: out.append('%.2f (%.2f, %.2f)'%(x, lb, ub))
+            out = pd.DataFrame(out, index=df.index, columns=['Value'])
+            return out
+        df_l = foo(df_l)
+        df_r = foo(df_r)
+    df = df_l.join(df_r, lsuffix=' '+lsuffix, rsuffix=' '+rsuffix, how='outer')
+    #df.fillna('-', inplace=True)
+    if atts:
+        to_use = []
+        for att in atts: to_use += [a[0] for a in df.index if a[0][:len(att)]==att]
+        df = df.loc[to_use,:]
+    return df
+
+def unstack_df(df, perc=False):
+    def foo(df):
+        import pandas as pd
+        out = []
+        for x, (lb, ub) in zip(df['mean'].values, zip(df['2.5%'].values, df['97.5%'].values)):
+            if perc: out.append('%.1f (%.1f, %.1f)'%(100*x, 100*lb, 100*ub))
+            else: out.append('%.2f (%.2f, %.2f)'%(x, lb, ub))
+        out = pd.Series(out, index=df.index)
+        return out
+    return foo(df).unstack()
