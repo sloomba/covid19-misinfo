@@ -11,5 +11,6 @@ These notebooks are intended to aid importing, transforming, and analysing the s
 ## Directory Structure
 1. `.dat/`: contains raw and processed survey data
 2. `.doc/`: contains survey questionnaire
-3. `.src/utils.py`: contains helper functions to import and transform survey data, compute and plot posterior statistics
-4. `.src/bayesoc.py`: defines python classes `Dim()`, `Outcome()`, `Society()` and `Model()` to implement general Bayesian socio-demographic models using `pystan`
+3. `.src/models.py`: contains functions to define and fit all Stan models described in the paper
+4. `.src/utils.py`: contains helper functions to import and transform survey data, compute and plot posterior statistics
+5. `.src/bayesoc.py`: defines python classes `Dim()`, `Outcome()`, `Society()` and `Model()` to implement general Bayesian socio-demographic models using `pystan`
