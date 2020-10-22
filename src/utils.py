@@ -82,7 +82,7 @@ def import_data(datadir='./dat', filename='orb_200918.sav'):
         except: pass
     return df
 
-def transform_data(df, dd, country='UK', group=None, save=''):
+def transform_data(df, dd, country='UK', group=None, minimal=True, save=''):
     '''Cleans, recodes and transforms raw survey data.
     See questions and field names in /doc/orb_questionnaire.pdf
 
@@ -142,17 +142,26 @@ def transform_data(df, dd, country='UK', group=None, save=''):
     metrics_img = {'QPOSTVACX_Lr': 'Vaccine Intent', 'QPOSTBELIEFX_Lr': 'Agreement', 'QPOSTTRUSTX_Lr': 'Trust', 
                    'QPOSTCHECKX_Lr': 'Fact-check', 'QPOSTSHARE_Lr': 'Share'}
     social_atts = {'QSOCTYPr': 'used', 'QSOCINFr': 'to receive info', 'QCIRSHRr': 'to share info'}
-    other_atts = {'QSHD':'Shielding',
-                  'QSOCUSE':'Social media usage', 
-                  'QCOVWHEN':'Expected vax availability',
-                  'QPOSTSIM':'Seen such online content',
-                  'QPOSTFRQ':'Frequency of such online content',
-                  'Q31b':'Engaged with such online content',
-                  'QCOVSELF':'Vaccine Intent for self (Pre)', 
-                  'QPOSTCOVSELF':'Vaccine Intent for self (Post)',
-                  'QCOVOTH':'Vaccine Intent for others (Pre)', 
-                  'QPOSTCOVOTH':'Vaccine Intent for others (Post)', 
-                  'imageseen':'Group'}
+    if minimal:
+        other_atts = {'QSOCUSE':'Social media usage', 
+                      'QPOSTSIM':'Seen such online content',
+                      'QCOVSELF':'Vaccine Intent for self (Pre)', 
+                      'QPOSTCOVSELF':'Vaccine Intent for self (Post)',
+                      'QCOVOTH':'Vaccine Intent for others (Pre)', 
+                      'QPOSTCOVOTH':'Vaccine Intent for others (Post)', 
+                      'imageseen':'Group'}
+    else:
+        other_atts = {'QSHD':'Shielding',
+                      'QSOCUSE':'Social media usage', 
+                      'QCOVWHEN':'Expected vax availability',
+                      'QPOSTSIM':'Seen such online content',
+                      'QPOSTFRQ':'Frequency of such online content',
+                      'Q31b':'Engaged with such online content',
+                      'QCOVSELF':'Vaccine Intent for self (Pre)', 
+                      'QPOSTCOVSELF':'Vaccine Intent for self (Post)',
+                      'QCOVOTH':'Vaccine Intent for others (Pre)', 
+                      'QPOSTCOVOTH':'Vaccine Intent for others (Post)', 
+                      'imageseen':'Group'}
              
     def expand_socc(code):
         names = ['Facebook', 'Twitter', 'YouTube', 'WhatsApp', 'Instagram', 'Pinterest', 'LinkedIN', 'Other', 'None of these']
@@ -188,8 +197,9 @@ def transform_data(df, dd, country='UK', group=None, save=''):
     var_fwd, var_bwd = demo_map(var_encoding)
     var_encoding = expand_code(var_encoding)    
     
-    atts = list(metrics_any.keys())+list(metrics_knl.keys())+list(metrics_cov.keys())+list(metrics_vci.keys())+list(metrics_aff.keys())
-    atts += list(trust[country].keys())+list(reasons.keys())+list(metrics_img.keys())+list(social_atts.keys())
+    if minimal: atts = []
+    else: atts = list(metrics_any.keys())+list(metrics_knl.keys())+list(metrics_cov.keys())+list(metrics_vci.keys())+list(metrics_aff.keys())+list(social_atts.keys())
+    atts += list(trust[country].keys())+list(reasons.keys())+list(metrics_img.keys())
     atts += list(other_atts.keys())+list(demo[country].keys())
     
     def recode_treatment(x): return int('ANTI' in x)
@@ -221,26 +231,31 @@ def transform_data(df, dd, country='UK', group=None, save=''):
     df_new = df.loc[idx,atts]
     dd_new = {}
     
-    for key in metrics_any:
-        df_new[key] = df_new[key].apply(recode_bools)
-        df_new.rename(columns={key:'Know anyone:%s'%metrics_any[key]}, inplace=True)
-        dd_new['Know anyone:%s'%metrics_any[key]] = {1:'Checked', 0:'Unchecked'}
-    for key in metrics_knl:
-        df_new[key] = df_new[key].apply(recode_likert)
-        df_new.rename(columns={key:'COVID-19 Knowledge:%s'%metrics_knl[key]}, inplace=True)
-        dd_new['COVID-19 Knowledge:%s'%metrics_knl[key]] = {2:'Strongly agree',1:'Tend to agree',0:'Do not know',-1:'Tend to disagree',-2:'Strongly disagree'}
-    for key in metrics_cov:
-        df_new[key] = df_new[key].apply(recode_likert)
-        df_new.rename(columns={key:'COVID-19 VCI:%s'%metrics_cov[key]}, inplace=True)
-        dd_new['COVID-19 VCI:%s'%metrics_cov[key]] = {2:'Strongly agree',1:'Tend to agree',0:'Do not know',-1:'Tend to disagree',-2:'Strongly disagree'}
-    for key in metrics_vci:
-        df_new[key] = df_new[key].apply(recode_likert)
-        df_new.rename(columns={key:'General VCI:%s'%metrics_vci[key]}, inplace=True)
-        dd_new['General VCI:%s'%metrics_vci[key]] = {2:'Strongly agree',1:'Tend to agree',0:'Do not know',-1:'Tend to disagree',-2:'Strongly disagree'}
-    for key in metrics_aff:
-        df_new[key] = df_new[key].apply(recode_likert)
-        df_new.rename(columns={key:'COVID-19 Impact:%s'%metrics_aff[key]}, inplace=True)
-        dd_new['COVID-19 Impact:%s'%metrics_aff[key]] = {2:'Strongly agree',1:'Tend to agree',0:'Do not know',-1:'Tend to disagree',-2:'Strongly disagree'}
+    if not minimal:
+        for key in metrics_any:
+            df_new[key] = df_new[key].apply(recode_bools)
+            df_new.rename(columns={key:'Know anyone:%s'%metrics_any[key]}, inplace=True)
+            dd_new['Know anyone:%s'%metrics_any[key]] = {1:'Checked', 0:'Unchecked'}
+        for key in metrics_knl:
+            df_new[key] = df_new[key].apply(recode_likert)
+            df_new.rename(columns={key:'COVID-19 Knowledge:%s'%metrics_knl[key]}, inplace=True)
+            dd_new['COVID-19 Knowledge:%s'%metrics_knl[key]] = {2:'Strongly agree',1:'Tend to agree',0:'Do not know',-1:'Tend to disagree',-2:'Strongly disagree'}
+        for key in metrics_cov:
+            df_new[key] = df_new[key].apply(recode_likert)
+            df_new.rename(columns={key:'COVID-19 VCI:%s'%metrics_cov[key]}, inplace=True)
+            dd_new['COVID-19 VCI:%s'%metrics_cov[key]] = {2:'Strongly agree',1:'Tend to agree',0:'Do not know',-1:'Tend to disagree',-2:'Strongly disagree'}
+        for key in metrics_vci:
+            df_new[key] = df_new[key].apply(recode_likert)
+            df_new.rename(columns={key:'General VCI:%s'%metrics_vci[key]}, inplace=True)
+            dd_new['General VCI:%s'%metrics_vci[key]] = {2:'Strongly agree',1:'Tend to agree',0:'Do not know',-1:'Tend to disagree',-2:'Strongly disagree'}
+        for key in metrics_aff:
+            df_new[key] = df_new[key].apply(recode_likert)
+            df_new.rename(columns={key:'COVID-19 Impact:%s'%metrics_aff[key]}, inplace=True)
+            dd_new['COVID-19 Impact:%s'%metrics_aff[key]] = {2:'Strongly agree',1:'Tend to agree',0:'Do not know',-1:'Tend to disagree',-2:'Strongly disagree'}
+        for key in social_atts:
+            df_new[key] = df_new[key].apply(recode_bools)
+            df_new.rename(columns={key:'Social:%s'%social_atts[key]}, inplace=True)
+            dd_new['Social:%s'%social_atts[key]] = {1:'Checked', 0:'Unchecked'}
              
     for key in trust[country]:
         df_new[key] = df_new[key].apply(recode_bools)
@@ -249,12 +264,7 @@ def transform_data(df, dd, country='UK', group=None, save=''):
     for key in reasons:
         df_new[key] = df_new[key].apply(recode_bools)
         df_new.rename(columns={key:'Reason:%s'%reasons[key]}, inplace=True)
-        dd_new['Reason:%s'%reasons[key]] = {1:'Checked', 0:'Unchecked'}
-    for key in social_atts:
-        df_new[key] = df_new[key].apply(recode_bools)
-        df_new.rename(columns={key:'Social:%s'%social_atts[key]}, inplace=True)
-        dd_new['Social:%s'%social_atts[key]] = {1:'Checked', 0:'Unchecked'}
-    
+        dd_new['Reason:%s'%reasons[key]] = {1:'Checked', 0:'Unchecked'}    
     for key in metrics_img:
         df_new.replace({key: dd['dict'][key]}, inplace=True)
         df_new[key] = df_new[key].apply(recode_likert_num)
