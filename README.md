@@ -3,14 +3,14 @@
 
 
 ## Jupyter Notebooks
-These notebooks are intended to aid importing, transforming, and analysing the survey data in this study.
+These notebooks are intended to aid importing, transforming, and analysing the survey data in this study. You may use [Jupyter nbviewer](https://nbviewer.jupyter.org/) to view these notebooks, or view their static (.html) versions in `.doc/`
 
 1. `import_data.ipynb`: demo of reading and transforming survey data for use in any downstream statistical modeling
 2. `statistical_analyses.ipynb`: demo statistical modeling and generation of figures and tables in the paper
 
 ## Directory Structure
 1. `.dat/`: contains processed survey data; sufficient to run all statistical analyses in the paper
-2. `.doc/`: contains full survey questionnaire
+2. `.doc/`: contains full survey questionnaire and static (.html) versions of the Jupyter Notebooks
 3. `.src/models.py`: contains functions to define and fit all Bayesian models described in the paper
 4. `.src/utils.py`: contains helper functions to import and transform survey data, compute and plot posterior statistics
 5. `.src/bayesoc.py`: defines python classes `Dim()`, `Outcome()`, `Society()` and `Model()` to implement general Bayesian socio-demographic models using `pystan`
