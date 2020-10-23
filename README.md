@@ -2,10 +2,10 @@
 *Sahil Loomba, Alexandre de Figueiredo, Simon Piatek, Kristen de Graaf, Heidi Larson*
 
 ## Jupyter Notebooks
-These notebooks are intended to aid importing, transforming, and analysing the survey data in this study. You may use [Jupyter nbviewer](https://nbviewer.jupyter.org/) to view these notebooks, or view their static (.html) versions in `.doc/`
+These notebooks are intended to aid importing, transforming, and analysing the survey data in this study. You may use [Jupyter nbviewer](https://nbviewer.jupyter.org/) to view these notebooks, or view their static (.html) versions in `.doc/`, or view them on OSF.
 
-1. `import_data.ipynb`: demo of reading and transforming survey data for use in any downstream statistical modeling
-2. `statistical_analyses.ipynb`: demo statistical modeling and generation of figures and tables in the paper
+1. `import_data.ipynb`: demo of reading and transforming survey data for use in any downstream statistical modeling; [view on OSF](https://osf.io/ej4c6/)
+2. `statistical_analyses.ipynb`: demo statistical modeling and generation of figures and tables in the paper; [view on OSF](https://osf.io/b3qkc/)
 
 ## Directory Structure
 1. `.dat/`: contains processed survey data; sufficient to run all statistical analyses in the paper
