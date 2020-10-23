@@ -1,7 +1,6 @@
 # Measuring the Impact‌ ‌of‌ ‌Exposure‌ ‌to‌ ‌COVID-19‌ ‌Vaccine‌ ‌Misinformation‌ ‌on‌ Vaccine Intent
 *Sahil Loomba, Alexandre de Figueiredo, Simon Piatek, Kristen de Graaf, Heidi Larson*
 
-
 ## Jupyter Notebooks
 These notebooks are intended to aid importing, transforming, and analysing the survey data in this study. You may use [Jupyter nbviewer](https://nbviewer.jupyter.org/) to view these notebooks, or view their static (.html) versions in `.doc/`
 
@@ -14,3 +13,8 @@ These notebooks are intended to aid importing, transforming, and analysing the s
 3. `.src/models.py`: contains functions to define and fit all Bayesian models described in the paper
 4. `.src/utils.py`: contains helper functions to import and transform survey data, compute and plot posterior statistics
 5. `.src/bayesoc.py`: defines python classes `Dim()`, `Outcome()`, `Society()` and `Model()` to implement general Bayesian socio-demographic models using `pystan`
+
+## Citation
+If you use this data, cite it as:
+
+Loomba, S., de Figueiredo, A., Piatek, S., de Graaf, K., & Larson, H. (2020, October 23). Measuring the Impact‌ ‌of‌ ‌Exposure‌ ‌to‌ ‌COVID-19‌ ‌Vaccine‌ ‌Misinformation‌ ‌on‌ Vaccine Intent in the UK and US. Retrieved from osf.io/cxwvp
