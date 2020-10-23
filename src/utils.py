@@ -292,8 +292,9 @@ def transform_data(df, dd, country='UK', group=None, minimal=True, save=''):
     df_new.rename(columns={i:i.split('_')[0] for i in list(df_new)}, inplace=True)
     if save:
         df_new.to_csv('%s.csv'%save)
-        import pickle
+        import pickle, json
         with open('%s.pkl'%save, 'wb') as fp: pickle.dump(dd_new, fp)
+        with open('%s.json'%save, 'w') as fp: json.dump(dd_new, fp)
     return df_new, dd_new
 
 def import_transformed_data(filepath=''):
