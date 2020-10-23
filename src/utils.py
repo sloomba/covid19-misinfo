@@ -99,10 +99,16 @@ def transform_data(df, dd, country='UK', group=None, minimal=True, save=''):
         * A :obj:`dict` of field names (:obj:`str`) mapped to a :obj:`dict` of recoded-values (:obj:`int`) mapped to value-names (:obj:`str`)
     '''
     #define all socio-demographic variables of interest
-    demo = {'UK': {'agerecode':'Age', 'DGEN':'Gender', 'DEDUUK':'Education_UK', 'DEMP':'Employment', 'DREL':'Religion', 
-                  'DPOLUK':'Political_UK', 'DETHUK':'Ethnicity_UK', 'DINCUK':'Income_UK', 'DGEOUK':'Region'},
-            'USA': {'agerecode':'Age', 'DGEN':'Gender', 'DEDUUS':'Education_US', 'DEMP':'Employment', 'DREL':'Religion',
-                    'DPOLUS':'Political_US', 'DETHUS':'Ethnicity_US', 'DINCUS':'Income_US', 'DGEOUS':'Region'}}
+    if minimal:
+        demo = {'UK': {'agerecode':'Age', 'DGEN':'Gender', 'DEDUUK':'Education_UK', 'DEMP':'Employment', 'DREL':'Religion', 
+                      'DPOLUK':'Political_UK', 'DETHUK':'Ethnicity_UK', 'DINCUK':'Income_UK'},
+                'USA': {'agerecode':'Age', 'DGEN':'Gender', 'DEDUUS':'Education_US', 'DEMP':'Employment', 'DREL':'Religion',
+                        'DPOLUS':'Political_US', 'DETHUS':'Ethnicity_US', 'DINCUS':'Income_US'}}
+    else:
+        demo = {'UK': {'agerecode':'Age', 'DGEN':'Gender', 'DEDUUK':'Education_UK', 'DEMP':'Employment', 'DREL':'Religion', 
+                      'DPOLUK':'Political_UK', 'DETHUK':'Ethnicity_UK', 'DINCUK':'Income_UK', 'DGEOUK':'Region'},
+                'USA': {'agerecode':'Age', 'DGEN':'Gender', 'DEDUUS':'Education_US', 'DEMP':'Employment', 'DREL':'Religion',
+                        'DPOLUS':'Political_US', 'DETHUS':'Ethnicity_US', 'DINCUS':'Income_US', 'DGEOUS':'Region'}}
     
     #define recoding of socio-demographics
     var_encoding = {'Gender':{(1,):'Male', (2,):'Female', (3, 4):'Other'},
