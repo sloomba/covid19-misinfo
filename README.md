@@ -14,11 +14,7 @@ These notebooks are intended to aid importing, transforming, and analysing the s
 4. `.src/utils.py`: contains helper functions to import and transform survey data, compute and plot posterior statistics
 5. `.src/bayesoc.py`: defines python classes `Dim()`, `Outcome()`, `Society()` and `Model()` to implement general Bayesian socio-demographic models using `pystan`
 
-## Citation
-If you use this data, cite it as:
-
-Loomba, S., de Figueiredo, A., Piatek, S., de Graaf, K., & Larson, H. (2020, October 23). Measuring the Impact‌ ‌of‌ ‌Exposure‌ ‌to‌ ‌COVID-19‌ ‌Vaccine‌ ‌Misinformation‌ ‌on‌ Vaccine Intent in the UK and US. Retrieved from osf.io/cxwvp
-
 ## Links
 1. View project on [OSF](https://osf.io/cxwvp/)
 2. View project on [GitHub](https://github.com/sloomba/covid19-misinfo/)
+3. View paper preprint on [medRxiv](https://www.medrxiv.org/content/10.1101/2020.10.22.20217513v1)
