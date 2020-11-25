@@ -1,0 +1,251 @@
+,,,,mean
+Control,1,Vaccine Intent,p[1],0.137
+Control,1,Vaccine Intent,p[2],0.165
+Control,1,Vaccine Intent,p[3],0.55
+Control,1,Vaccine Intent,p[4],0.078
+Control,1,Vaccine Intent,p[5],0.07
+Control,1,Agreement,p[1],0.018
+Control,1,Agreement,p[2],0.036
+Control,1,Agreement,p[3],0.382
+Control,1,Agreement,p[4],0.362
+Control,1,Agreement,p[5],0.202
+Control,1,Trust,p[1],0.022
+Control,1,Trust,p[2],0.036
+Control,1,Trust,p[3],0.334
+Control,1,Trust,p[4],0.414
+Control,1,Trust,p[5],0.194
+Control,1,Fact-check,p[1],0.059
+Control,1,Fact-check,p[2],0.115
+Control,1,Fact-check,p[3],0.303
+Control,1,Fact-check,p[4],0.306
+Control,1,Fact-check,p[5],0.217
+Control,1,Share,p[1],0.261
+Control,1,Share,p[2],0.146
+Control,1,Share,p[3],0.313
+Control,1,Share,p[4],0.183
+Control,1,Share,p[5],0.097
+Control,2,Vaccine Intent,p[1],0.101
+Control,2,Vaccine Intent,p[2],0.135
+Control,2,Vaccine Intent,p[3],0.607
+Control,2,Vaccine Intent,p[4],0.085
+Control,2,Vaccine Intent,p[5],0.072
+Control,2,Agreement,p[1],0.029
+Control,2,Agreement,p[2],0.05
+Control,2,Agreement,p[3],0.481
+Control,2,Agreement,p[4],0.28
+Control,2,Agreement,p[5],0.16
+Control,2,Trust,p[1],0.028
+Control,2,Trust,p[2],0.074
+Control,2,Trust,p[3],0.44
+Control,2,Trust,p[4],0.319
+Control,2,Trust,p[5],0.139
+Control,2,Fact-check,p[1],0.104
+Control,2,Fact-check,p[2],0.116
+Control,2,Fact-check,p[3],0.347
+Control,2,Fact-check,p[4],0.243
+Control,2,Fact-check,p[5],0.19
+Control,2,Share,p[1],0.323
+Control,2,Share,p[2],0.125
+Control,2,Share,p[3],0.306
+Control,2,Share,p[4],0.151
+Control,2,Share,p[5],0.095
+Control,3,Vaccine Intent,p[1],0.181
+Control,3,Vaccine Intent,p[2],0.218
+Control,3,Vaccine Intent,p[3],0.475
+Control,3,Vaccine Intent,p[4],0.069
+Control,3,Vaccine Intent,p[5],0.057
+Control,3,Agreement,p[1],0.023
+Control,3,Agreement,p[2],0.032
+Control,3,Agreement,p[3],0.355
+Control,3,Agreement,p[4],0.365
+Control,3,Agreement,p[5],0.225
+Control,3,Trust,p[1],0.019
+Control,3,Trust,p[2],0.033
+Control,3,Trust,p[3],0.313
+Control,3,Trust,p[4],0.392
+Control,3,Trust,p[5],0.243
+Control,3,Fact-check,p[1],0.107
+Control,3,Fact-check,p[2],0.109
+Control,3,Fact-check,p[3],0.305
+Control,3,Fact-check,p[4],0.287
+Control,3,Fact-check,p[5],0.192
+Control,3,Share,p[1],0.249
+Control,3,Share,p[2],0.116
+Control,3,Share,p[3],0.324
+Control,3,Share,p[4],0.197
+Control,3,Share,p[5],0.114
+Control,4,Vaccine Intent,p[1],0.101
+Control,4,Vaccine Intent,p[2],0.132
+Control,4,Vaccine Intent,p[3],0.61
+Control,4,Vaccine Intent,p[4],0.08
+Control,4,Vaccine Intent,p[5],0.077
+Control,4,Agreement,p[1],0.039
+Control,4,Agreement,p[2],0.064
+Control,4,Agreement,p[3],0.495
+Control,4,Agreement,p[4],0.268
+Control,4,Agreement,p[5],0.134
+Control,4,Trust,p[1],0.048
+Control,4,Trust,p[2],0.083
+Control,4,Trust,p[3],0.453
+Control,4,Trust,p[4],0.29
+Control,4,Trust,p[5],0.126
+Control,4,Fact-check,p[1],0.127
+Control,4,Fact-check,p[2],0.109
+Control,4,Fact-check,p[3],0.338
+Control,4,Fact-check,p[4],0.219
+Control,4,Fact-check,p[5],0.207
+Control,4,Share,p[1],0.313
+Control,4,Share,p[2],0.139
+Control,4,Share,p[3],0.314
+Control,4,Share,p[4],0.143
+Control,4,Share,p[5],0.091
+Control,5,Vaccine Intent,p[1],0.089
+Control,5,Vaccine Intent,p[2],0.139
+Control,5,Vaccine Intent,p[3],0.615
+Control,5,Vaccine Intent,p[4],0.085
+Control,5,Vaccine Intent,p[5],0.072
+Control,5,Agreement,p[1],0.028
+Control,5,Agreement,p[2],0.062
+Control,5,Agreement,p[3],0.411
+Control,5,Agreement,p[4],0.321
+Control,5,Agreement,p[5],0.178
+Control,5,Trust,p[1],0.031
+Control,5,Trust,p[2],0.053
+Control,5,Trust,p[3],0.397
+Control,5,Trust,p[4],0.353
+Control,5,Trust,p[5],0.166
+Control,5,Fact-check,p[1],0.124
+Control,5,Fact-check,p[2],0.097
+Control,5,Fact-check,p[3],0.345
+Control,5,Fact-check,p[4],0.245
+Control,5,Fact-check,p[5],0.189
+Control,5,Share,p[1],0.294
+Control,5,Share,p[2],0.124
+Control,5,Share,p[3],0.318
+Control,5,Share,p[4],0.158
+Control,5,Share,p[5],0.106
+Treatment,1,Vaccine Intent,p[1],0.060333333333333336
+Treatment,1,Vaccine Intent,p[2],0.04733333333333333
+Treatment,1,Vaccine Intent,p[3],0.509
+Treatment,1,Vaccine Intent,p[4],0.18833333333333332
+Treatment,1,Vaccine Intent,p[5],0.195
+Treatment,1,Agreement,p[1],0.165
+Treatment,1,Agreement,p[2],0.13633333333333333
+Treatment,1,Agreement,p[3],0.4713333333333333
+Treatment,1,Agreement,p[4],0.13933333333333334
+Treatment,1,Agreement,p[5],0.088
+Treatment,1,Trust,p[1],0.23733333333333334
+Treatment,1,Trust,p[2],0.19533333333333333
+Treatment,1,Trust,p[3],0.363
+Treatment,1,Trust,p[4],0.13633333333333333
+Treatment,1,Trust,p[5],0.068
+Treatment,1,Fact-check,p[1],0.10866666666666666
+Treatment,1,Fact-check,p[2],0.087
+Treatment,1,Fact-check,p[3],0.25466666666666665
+Treatment,1,Fact-check,p[4],0.22166666666666668
+Treatment,1,Fact-check,p[5],0.328
+Treatment,1,Share,p[1],0.4816666666666667
+Treatment,1,Share,p[2],0.109
+Treatment,1,Share,p[3],0.223
+Treatment,1,Share,p[4],0.10333333333333333
+Treatment,1,Share,p[5],0.083
+Treatment,2,Vaccine Intent,p[1],0.06066666666666667
+Treatment,2,Vaccine Intent,p[2],0.049666666666666665
+Treatment,2,Vaccine Intent,p[3],0.5796666666666667
+Treatment,2,Vaccine Intent,p[4],0.11266666666666666
+Treatment,2,Vaccine Intent,p[5],0.19733333333333333
+Treatment,2,Agreement,p[1],0.302
+Treatment,2,Agreement,p[2],0.12566666666666668
+Treatment,2,Agreement,p[3],0.4103333333333333
+Treatment,2,Agreement,p[4],0.10066666666666667
+Treatment,2,Agreement,p[5],0.06133333333333333
+Treatment,2,Trust,p[1],0.349
+Treatment,2,Trust,p[2],0.16033333333333333
+Treatment,2,Trust,p[3],0.3323333333333333
+Treatment,2,Trust,p[4],0.09933333333333333
+Treatment,2,Trust,p[5],0.059
+Treatment,2,Fact-check,p[1],0.18
+Treatment,2,Fact-check,p[2],0.08466666666666667
+Treatment,2,Fact-check,p[3],0.25
+Treatment,2,Fact-check,p[4],0.17566666666666667
+Treatment,2,Fact-check,p[5],0.30966666666666665
+Treatment,2,Share,p[1],0.49833333333333335
+Treatment,2,Share,p[2],0.09233333333333334
+Treatment,2,Share,p[3],0.21933333333333332
+Treatment,2,Share,p[4],0.104
+Treatment,2,Share,p[5],0.086
+Treatment,3,Vaccine Intent,p[1],0.06866666666666667
+Treatment,3,Vaccine Intent,p[2],0.051666666666666666
+Treatment,3,Vaccine Intent,p[3],0.6386666666666667
+Treatment,3,Vaccine Intent,p[4],0.09266666666666666
+Treatment,3,Vaccine Intent,p[5],0.14833333333333334
+Treatment,3,Agreement,p[1],0.35233333333333333
+Treatment,3,Agreement,p[2],0.11333333333333333
+Treatment,3,Agreement,p[3],0.38166666666666665
+Treatment,3,Agreement,p[4],0.08733333333333333
+Treatment,3,Agreement,p[5],0.06533333333333333
+Treatment,3,Trust,p[1],0.4146666666666667
+Treatment,3,Trust,p[2],0.14266666666666666
+Treatment,3,Trust,p[3],0.31133333333333335
+Treatment,3,Trust,p[4],0.07366666666666667
+Treatment,3,Trust,p[5],0.057666666666666665
+Treatment,3,Fact-check,p[1],0.286
+Treatment,3,Fact-check,p[2],0.09933333333333333
+Treatment,3,Fact-check,p[3],0.288
+Treatment,3,Fact-check,p[4],0.12
+Treatment,3,Fact-check,p[5],0.20666666666666667
+Treatment,3,Share,p[1],0.5096666666666667
+Treatment,3,Share,p[2],0.09466666666666666
+Treatment,3,Share,p[3],0.22166666666666668
+Treatment,3,Share,p[4],0.09733333333333333
+Treatment,3,Share,p[5],0.07666666666666666
+Treatment,4,Vaccine Intent,p[1],0.077
+Treatment,4,Vaccine Intent,p[2],0.05566666666666667
+Treatment,4,Vaccine Intent,p[3],0.5976666666666667
+Treatment,4,Vaccine Intent,p[4],0.12
+Treatment,4,Vaccine Intent,p[5],0.14966666666666667
+Treatment,4,Agreement,p[1],0.2806666666666667
+Treatment,4,Agreement,p[2],0.13
+Treatment,4,Agreement,p[3],0.3473333333333333
+Treatment,4,Agreement,p[4],0.15
+Treatment,4,Agreement,p[5],0.092
+Treatment,4,Trust,p[1],0.32033333333333336
+Treatment,4,Trust,p[2],0.157
+Treatment,4,Trust,p[3],0.3403333333333333
+Treatment,4,Trust,p[4],0.11166666666666666
+Treatment,4,Trust,p[5],0.07066666666666667
+Treatment,4,Fact-check,p[1],0.21266666666666667
+Treatment,4,Fact-check,p[2],0.10233333333333333
+Treatment,4,Fact-check,p[3],0.2773333333333333
+Treatment,4,Fact-check,p[4],0.16
+Treatment,4,Fact-check,p[5],0.24766666666666667
+Treatment,4,Share,p[1],0.496
+Treatment,4,Share,p[2],0.09033333333333333
+Treatment,4,Share,p[3],0.22533333333333333
+Treatment,4,Share,p[4],0.105
+Treatment,4,Share,p[5],0.08333333333333333
+Treatment,5,Vaccine Intent,p[1],0.07466666666666667
+Treatment,5,Vaccine Intent,p[2],0.043333333333333335
+Treatment,5,Vaccine Intent,p[3],0.622
+Treatment,5,Vaccine Intent,p[4],0.096
+Treatment,5,Vaccine Intent,p[5],0.164
+Treatment,5,Agreement,p[1],0.3586666666666667
+Treatment,5,Agreement,p[2],0.12633333333333333
+Treatment,5,Agreement,p[3],0.382
+Treatment,5,Agreement,p[4],0.07033333333333333
+Treatment,5,Agreement,p[5],0.06266666666666666
+Treatment,5,Trust,p[1],0.4093333333333333
+Treatment,5,Trust,p[2],0.14066666666666666
+Treatment,5,Trust,p[3],0.317
+Treatment,5,Trust,p[4],0.07133333333333333
+Treatment,5,Trust,p[5],0.06166666666666667
+Treatment,5,Fact-check,p[1],0.23366666666666666
+Treatment,5,Fact-check,p[2],0.084
+Treatment,5,Fact-check,p[3],0.26033333333333336
+Treatment,5,Fact-check,p[4],0.151
+Treatment,5,Fact-check,p[5],0.271
+Treatment,5,Share,p[1],0.5213333333333333
+Treatment,5,Share,p[2],0.08833333333333333
+Treatment,5,Share,p[3],0.222
+Treatment,5,Share,p[4],0.08933333333333333
+Treatment,5,Share,p[5],0.079
