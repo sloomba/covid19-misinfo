@@ -1,7 +1,7 @@
 class Dim():
     '''Model a univariate/1-D categorical/ordinal predictor variable'''
     
-    def __init__(self, pi=1, ordinal=False, out=1, beta=0, delta=None, beta_prior=1., delta_prior=1., value=None, name='Dim'):
+    def __init__(self, pi=1, ordinal=False, out=1, beta=0, delta=None, prior_beta=1., prior_delta=1., prior_mu_beta=1., prior_mu_delta=1., value=None, name='Dim'):
         import re
         self.name = '_'.join(re.split('[,|:|;|-|/|\s]+', ''.join(re.split("['|\.]+", str(name)))))
         self.set_pi(pi)
@@ -9,8 +9,10 @@ class Dim():
         self.set_out(out)
         self.set_beta(beta)
         self.set_delta(delta)
-        self.set_beta_prior(beta_prior)
-        self.set_delta_prior(delta_prior)
+        self.set_prior_beta(prior_beta)
+        self.set_prior_delta(prior_delta)
+        self.set_prior_mu_beta(prior_mu_beta)
+        self.set_prior_mu_delta(prior_mu_delta)
         self.set_value(value)
 
     def check_pi(self, x):
@@ -67,9 +69,13 @@ class Dim():
         assert(x>=0)
         return float(x)
             
-    def set_beta_prior(self, beta_prior=1.): self.beta_prior = self.check_prior(beta_prior)
+    def set_prior_beta(self, prior_beta=1.): self.prior_beta = self.check_prior(prior_beta)
         
-    def set_delta_prior(self, delta_prior=1.): self.delta_prior = self.check_prior(delta_prior)
+    def set_prior_delta(self, prior_delta=1.): self.prior_delta = self.check_prior(prior_delta)
+
+    def set_prior_mu_beta(self, prior_mu_beta=1.): self.prior_mu_beta = self.check_prior(prior_mu_beta)
+        
+    def set_prior_mu_delta(self, prior_mu_delta=1.): self.prior_mu_delta = self.check_prior(prior_mu_delta)
         
     def set_value(self, value=None):
         if value is None: value = list(map(lambda x: str(x+1), range(len(self))))
@@ -83,27 +89,35 @@ class Dim():
         '''get beta-contribution of given index'''
         if self.ordinal: return self.beta*(self.delta[:idx].sum(0))
         else: return self.beta[idx]
-            
-    def get_stan(self, outcome_name='Outcome'):
+
+    def get_stan(self, outcome_size='m', outcome_index=':', hierarchical=True):
         dat = 'int<lower=1> k_%s;\nint<lower=1,upper=k_%s> %s[n];'%(self.name, self.name, self.name)
         if self.ordinal:            
             if self.out==1:
                 par = 'real beta_%s;\nsimplex[k_%s-1] delta_%s;'%(self.name, self.name, self.name)
-                mod = 'beta_%s ~ normal(0, %f);\n{\n\tvector[k_%s-1] u_%s;\n\tfor (i in 1:(k_%s-1))\n\t\tu_%s[i] = 1;\n\tdelta_%s ~ dirichlet(%f*u_%s);\n}'%(self.name, self.beta_prior, self.name, self.name, self.name, self.name, self.name, self.delta_prior, self.name)
+                mod = 'beta_%s ~ normal(0, %f);\n{\n\tvector[k_%s-1] u_%s;\n\tfor (i in 1:(k_%s-1))\n\t\tu_%s[i] = 1;\n\tdelta_%s ~ dirichlet(%f*u_%s);\n}'%(self.name, self.prior_beta, self.name, self.name, self.name, self.name, self.name, self.prior_delta, self.name)
                 arg = 'beta_%s*sum(delta_%s[:%s[i]-1])'%(self.name, self.name, self.name)
             else:
-                par = 'real beta_%s[k_%s];\nsimplex[k_%s-1] delta_%s[k_%s];'%(self.name, outcome_name, self.name, self.name, outcome_name)
-                mod = 'for (i in 1:k_%s)\n\tbeta_%s[i] ~ normal(0, %f);\n{\n\tvector[k_%s-1] u_%s;\n\tfor (i in 1:(k_%s-1))\n\t\tu_%s[i] = 1;\n\tfor (i in 1:k_%s)\n\t\tdelta_%s[i] ~ dirichlet(%f*u_%s);\n}'%(outcome_name, self.name, self.beta_prior, self.name, self.name, self.name, self.name, outcome_name, self.name, self.delta_prior, self.name)
-                arg = 'beta_%s*sum(delta_%s[:,:%s[i]-1])'%(self.name, self.name, self.name)
+                par = 'real beta_%s[%s];\nsimplex[k_%s-1] delta_%s[%s];'%(self.name, outcome_size, self.name, self.name, outcome_size)
+                if hierarchical:
+                    par += 'real mu_beta_%s; vector<lower=0>[k_%s] mu_delta_%s;'%(self.name, self.name, self.name)
+                    mod = 'mu_beta_%s ~ normal(0, %f); mu_delta_%s ~ exponential(%f)'%(self.name, self.prior_mu_beta, self.name, self.prior_mu_delta)
+                    mod += 'for (i in 1:%s)\n\tbeta_%s[i] ~ normal(mu_beta_%s, %f);\nfor (i in 1:%s)\n\tdelta_%s[i] ~ dirichlet(mu_delta_%s);'%(outcome_size, self.name, self.name, self.prior_beta, outcome_size, self.name, self.name)
+                else: mod = 'for (i in 1:%s)\n\tbeta_%s[i] ~ normal(0, %f);\n{\n\tvector[k_%s-1] u_%s;\n\tfor (i in 1:(k_%s-1))\n\t\tu_%s[i] = 1;\n\tfor (i in 1:%s)\n\t\tdelta_%s[i] ~ dirichlet(%f*u_%s);\n}'%(outcome_size, self.name, self.prior_beta, self.name, self.name, self.name, self.name, outcome_size, self.name, self.prior_delta, self.name)
+                arg = 'beta_%s*sum(delta_%s[%s,:%s[i]-1])'%(self.name, self.name, outcome_index, self.name)
         else:
             if self.out==1:
                 par = 'real beta_%s[k_%s];'%(self.name, self.name)
-                mod = 'for (i in 1:k_%s)\n\tbeta_%s[i] ~ normal(0, %f);'%(self.name, self.name, self.beta_prior)
+                mod = 'for (i in 1:k_%s)\n\tbeta_%s[i] ~ normal(0, %f);'%(self.name, self.name, self.prior_beta)
                 arg = 'beta_%s[%s[i]]'%(self.name, self.name)
             else:
-                par = 'real beta_%s[k_%s,k_%s];'%(self.name, outcome_name, self.name)
-                mod = 'for (i in 1:k_%s)\n\tfor (j in 1:k_%s)\n\t\tbeta_%s[i][j] ~ normal(0, %f);'%(outcome_name, self.name, self.name, self.beta_prior)
-                arg = 'beta_%s[:,%s[i]]'%(self.name, self.name)
+                par = 'real beta_%s[%s,k_%s];'%(self.name, outcome_size, self.name)
+                if hierarchical:
+                    par += 'real mu_beta_%s[k_%s];'%(self.name, self.name)
+                    mod = 'mu_beta_%s ~ normal(0, %f);'%(self.name, self.prior_mu_beta)
+                    mod += 'for (i in 1:%s)\n\tfor (j in 1:k_%s)\n\t\tbeta_%s[i][j] ~ normal(mu_beta_%s[j], %f);'%(outcome_size, self.name, self.name, self.name, self.prior_beta)
+                else: mod = 'for (i in 1:%s)\n\tfor (j in 1:k_%s)\n\t\tbeta_%s[i][j] ~ normal(0, %f);'%(outcome_size, self.name, self.name, self.prior_beta)
+                arg = 'beta_%s[%s,%s[i]]'%(self.name, outcome_index, self.name)
         return {'data': dat, 'parameters': par, 'model': mod, 'output': arg}
     
     def __str__(self):
@@ -182,9 +196,10 @@ class Outcome():
         if self.input is None: return 0.
         else: return self.input.get_beta(idx)
         
-    def get_stan(self):
+    def get_stan(self, outcome_size='', hierarchical=True):
         if self.input is not None:
-            inp = self.input.get_stan(outcome_name=self.name)
+            if not outcome_size: outcome_size='k_%s'%self.name
+            inp = self.input.get_stan(outcome_size=outcome_size, hierarchical=hierarchical)
             dat, par, mod, out = 'int<lower=1> n;\n'+inp['data']+'\n', inp['parameters']+'\n', inp['model']+'\n', inp['output']
             if self.kind=='con': out += ' + '
             elif self.kind=='cat': out = 'to_vector (%s) '%out
@@ -295,10 +310,10 @@ class Society():
     
     def get_beta(self, idx): return sum([self.dims[i].get_beta(idx[i]) for i in range(len(self))])
     
-    def get_stan(self, outcome_name='Outcome'):
+    def get_stan(self):
         stan = {'data':[], 'parameters':[], 'model':[], 'output':[]}
         for i in range(len(self)):
-            curr = self.dims[i].get_stan(outcome_name=outcome_name)
+            curr = self.dims[i].get_stan()
             for j in curr: stan[j].append(curr[j])
         for i in stan:
             if i=='output': stan[i] = ' + '.join(stan[i])

@@ -1,3 +1,9 @@
+def read_table(filename, datadir='./out', levels=1):
+    import pandas as pd
+    import os
+    df = pd.read_csv(os.path.join(datadir, filename), index_col=list(range(levels)))
+    return df
+
 def import_datadict(datadir='./dat', filename='orb_datadict.txt'):
     '''Imports the data dictionary for raw survey data.
     See questions and field names in /doc/orb_questionnaire.pdf
@@ -414,7 +420,22 @@ def count_attribute(df, att, by_att=None, norm=False, where=None, dd={}, plot=Fa
         plt.show()        
     return counts
 
-def stats_impact(fit):
+def stats(fit, statistics=['mean', '2.5%', '97.5%', 'n_eff', 'Rhat'], digits=2, exclude_lp=True, save=''):
+    import pandas as pd
+    sumobj = fit.summary()
+    params = list(sumobj['summary_rownames'])
+    stats = list(sumobj['summary_colnames'])
+    out = pd.DataFrame(sumobj['summary'], index=params, columns=stats)
+    if exclude_lp: out.drop(index='lp__', inplace=True)
+    if statistics: out = out[statistics]
+    roundmap = dict([(key, 0) if key=='n_eff' else (key, digits) for key in out])
+    out = out.round(roundmap)
+    out = out.rename(columns={'mean':'Mean', 'n_eff':'ESS'})
+    if 'n_eff' in statistics: out = out.astype({'ESS':int})
+    if save: out.to_csv('%s.csv'%save)
+    return out
+
+def stats_impact(fit, save=''):
     import numpy as np
     from .bayesoc import Outcome, Model
     import pandas as pd
@@ -433,9 +454,10 @@ def stats_impact(fit):
     prob.append(prob[1]-prob[0])
     groups = ['Pre Exposure', 'Post Exposure', 'Post-Pre']
     out = pd.concat({groups[i]: prob[i].describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']] for i in range(len(groups))})
+    if save: out.to_csv('%s.csv'%save)
     return out
 
-def stats_impact_causal(fit):
+def stats_impact_causal(fit, save=''):
     import numpy as np
     from .bayesoc import Outcome, Model
     import pandas as pd
@@ -459,41 +481,48 @@ def stats_impact_causal(fit):
         dfs[-1].append(pd.DataFrame(diff[i].T, columns=names).describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']])
     groups = ['Control', 'Treatment', 'Treatment-Control']
     out = pd.concat({groups[i]: pd.concat({names[j]: dfs[i][j] for j in range(len(names))}) for i in range(len(groups))})
+    if save: out.to_csv('%s.csv'%save)
     return out
 
-def plot_stats(df1, df2=None, demos=False, oddsratio=True, title='', title_l='', title_r='', xlab='', xlab_l='', xlab_r='', tick_suffix='', label_suffix='', ylabel=True, factor=0.3, signsize=10, ticksize=10, labelsize=12, titlesize=14, hspace=0.2, wspace=0.05, align_labels=False, title_loc=0.0):
-    import matplotlib.pyplot as plt
-    import numpy as np
-    dem = ['Age', 'Gender', 'Education', 'Employment', 'Religion', 'Political', 'Ethnicity', 'Income']
-    atts = list(df1.index)
-    if not isinstance(atts[0], tuple):
-        from pandas import concat
-        df1 = concat({'tmp': df1})
-        if df2 is not None: df2 = concat({'tmp': df2})
-        atts = list(df1.index)
-        ylabel = False
-    if not demos: atts = [i for i in atts if i[0] not in dem]
+def multi2index(index, suffix=''):
     att_cat = {}
-    for att in atts:
+    for att in index:
         if ':' in att[0]:
             key, val = tuple(att[0].split(':'))
             if key in att_cat:
                 att_cat[key]['idx'].append(att)
-                att_cat[key]['val'].append(val+tick_suffix)
-            else: att_cat[key] = {'idx': [att], 'val': [val+tick_suffix]}
+                att_cat[key]['val'].append(val+suffix)
+            else: att_cat[key] = {'idx': [att], 'val': [val+suffix]}
         else:
             if att[0] in att_cat:
                 att_cat[att[0]]['idx'].append(att)
-                att_cat[att[0]]['val'].append(att[1]+tick_suffix)
-            else: att_cat[att[0]] = {'idx': [att], 'val': [att[1]+tick_suffix]}
-                
+                att_cat[att[0]]['val'].append(att[1]+suffix)
+            else: att_cat[att[0]] = {'idx': [att], 'val': [att[1]+suffix]}
+    return att_cat
+
+def plot_stats(df, demos=False, oddsratio=True, title='', subtitle=[], xlabel='', subxlabel=[], tick_suffix='', label_suffix='', ylabel=True, factor=0.4, signsize=10, ticksize=10, labelsize=12, titlesize=14, hspace=0.2, wspace=0.05, align_labels=False, title_loc=0.0, save='', fmt='png'):
+    if not isinstance(df, list): df = [df]
+    if isinstance(subtitle, str): subtitle = [subtitle]*len(df)
+    if isinstance(subxlabel, str): subxlabel = [subxlabel]*len(df)
+    import matplotlib.pyplot as plt
+    import numpy as np
+    cols = len(df)
+    dem = ['Age', 'Gender', 'Education', 'Employment', 'Religion', 'Political', 'Ethnicity', 'Income']
+    for i in range(cols):
+        atts = list(df[i].index)
+        if not isinstance(atts[0], tuple):
+            from pandas import concat
+            df[i] = concat({'tmp': df[i]})
+            atts = list(df[i].index)
+            ylabel = False
+    if not demos: atts = [i for i in atts if i[0] not in dem]
+    att_cat = multi2index(atts, tick_suffix)
     rows = len(att_cat)
     rows_per = [len(att_cat[k]['idx']) for k in att_cat]
-    cols = 2-int(df2 is None)
-    fig, ax = plt.subplots(nrows=rows, ncols=cols, dpi=180, sharex='col', figsize=(6, factor*sum(rows_per)),
-                           gridspec_kw={'height_ratios': rows_per}, constrained_layout=not(bool(xlab)))
+    fig, ax = plt.subplots(nrows=rows, ncols=cols, dpi=180, sharex='col', figsize=(3*cols, factor*sum(rows_per)),
+                           gridspec_kw={'height_ratios': rows_per}, constrained_layout=not(bool(xlabel)))
     if len(ax.shape)==1:
-        if df2 is None: ax = ax[:,np.newaxis]
+        if cols==1: ax = ax[:,np.newaxis]
         else: ax = ax[np.newaxis,:]
     names = list(att_cat.keys())
     
@@ -516,38 +545,31 @@ def plot_stats(df1, df2=None, demos=False, oddsratio=True, title='', title_l='',
         if right: ax.yaxis.tick_right()
     
     for i in range(rows):
-        tmp = df1.loc[att_cat[names[i]]['idx']]
-        #if names[i] in dem: plot_bars(ax[i,0], tmp, list(dd[names[i]].values()), base=base[names[i]])
-        #else: plot_bars(ax[i,0], tmp, att_cat[names[i]]['val'])
-        plot_bars(ax[i,0], tmp, att_cat[names[i]]['val'])
-        if ylabel: ax[i,0].set_ylabel(names[i]+label_suffix, fontweight='bold', fontsize=labelsize)
-        #else: plot_bars(ax[i], tmp, att_cat[names[i]]['val'])
-        if df2 is not None:
-            try: c1 = tmp['counts'].values
-            except: c1 = []
-            tmp = df2.loc[att_cat[names[i]]['idx']]
-            try: c2 = tmp['counts'].values
-            except: c2 = []
-            plot_bars(ax[i,1], tmp, ['%i, %i'%(a, b) for a, b in zip(c1, c2)], right=True)
-            #plot_bars(ax[i,1], tmp)
-            if i==0:
-                if title_l: ax[i,0].set_title(title_l)
-                if title_r: ax[i,1].set_title(title_r)
+        for j in range(cols):
+            if j==0:
+                plot_bars(ax[i,j], df[j].loc[att_cat[names[i]]['idx']], att_cat[names[i]]['val'])
+                if ylabel: ax[i,j].set_ylabel(names[i]+label_suffix, fontweight='bold', fontsize=labelsize)
+            elif j==cols-1:
+                try: c = [', '.join(list(map(lambda y: str(y), x))) for x in np.array([df[k]['counts'][att_cat[names[i]]['idx']].values for k in range(cols)]).T]
+                except: c = []
+                plot_bars(ax[i,j], df[j].loc[att_cat[names[i]]['idx']], c, right=True)
+            else: plot_bars(ax[i,j], df[j].loc[att_cat[names[i]]['idx']])
+            if i==0 and subtitle: ax[i,j].set_title(subtitle[j])
+            if i==rows-1 and subxlabel: ax[i,j].set_xlabel(subxlabel[j], fontsize=labelsize)
+
     if align_labels: fig.align_ylabels()
     if title: plt.suptitle(title, fontsize=titlesize, y=1+title_loc)
-    if xlab_l and xlab_r:
-        ax[i,0].set_xlabel(xlab_l, fontsize=labelsize)
-        ax[i,1].set_xlabel(xlab_r, fontsize=labelsize)
-    if xlab:
+    if xlabel:
         fig.add_subplot(111, frameon=False)
         plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
-        plt.xlabel(xlab, fontsize=labelsize)
+        plt.xlabel(xlabel, fontsize=labelsize)
         plt.subplots_adjust(hspace=hspace, wspace=wspace)
     #fig.tight_layout()
+    if save: plt.savefig('%s.%s'%(save, fmt), dpi=180, bbox_inches='tight')
     plt.show()
     return
 
-def plot_causal_flow(df, df_T, df_C, title='', save=''):
+def plot_causal_flow(df, df_T, df_C, title='', save='', fmt='png'):
     def plot_sankey(group, dat):
         import plotly.graph_objects as go
         src, tgt, val = [], [], []
@@ -563,11 +585,11 @@ def plot_causal_flow(df, df_T, df_C, title='', save=''):
         link = dict(source=src, target=tgt, value=val))])
         fig.update_layout(title_text='%s %s'%(title, group), font_size=20)
         fig.show()
-        if save: fig.write_image('%s_%s.png'%(save, group), scale=4)
+        if save: fig.write_image('%s_%s.%s'%(save, group, fmt), scale=4)
     plot_sankey('Treatment', df_T)
     plot_sankey('Control', df_C)
 
-def stats_socdem(fit, dd, df, atts=[], group=None, oddsratio=True, title='Trust in Source'):
+def stats_socdem(fit, dd, df, atts=[], causal=True, group=None, oddsratio=True, save=''):
     import numpy as np
     import pandas as pd
     from .bayesoc import Dim, Outcome, Model
@@ -580,27 +602,50 @@ def stats_socdem(fit, dd, df, atts=[], group=None, oddsratio=True, title='Trust 
     bases[2] = 5 #reference category for education
     bases[7] = 5 #reference category for income
     tmp = Model(Outcome())
-    stats = {}
-    counts_all = {}
+    if causal:
+        stats = {'Control':{}, 'Treatment':{}, 'Treatment-Control':{}}
+        counts = {'Control':{}, 'Treatment':{}, 'Treatment-Control':{}}
+    else:
+        stats = {}
+        counts = {}
     def foo(x): return np.exp(x)
-    for cat, base in zip(cats, bases):
+    def getcounts(cat, base, group=None):        
         vals = np.sort(list(dd[cat].keys()))
         if group is None: counts = df[cat].value_counts().loc[vals]
         else: counts = df[df['Treatment']==group][cat].value_counts().loc[vals]
         counts.index = [dd[cat][k] for k in vals]
-        counts_all[cat] = counts.iloc[list(range(base-1))+list(range(base, len(vals)))]
+        return counts.iloc[list(range(base-1))+list(range(base, len(vals)))]
+    def summarize(stats, counts):
+        if oddsratio: stats = stats.apply(foo)
+        stats = stats.describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']]
+        stats.drop('chain', inplace=True)
+        stats.index = counts.index
+        return stats
+    def mergecats(stats, counts):
+        stats = pd.concat(stats)
+        counts = pd.concat(counts)
+        counts.name = 'counts'
+        return stats.merge(counts.to_frame(), left_index=True, right_index=True)
+    for cat, base in zip(cats, bases):
         dim = Dim(name=cat)
-        stats[cat] = tmp.get_posterior_samples(pars=['beta_%s[%i]'%(dim.name, i+1) for i in range(len(dd[cat]))], contrast='beta_%s[%i]'%(dim.name, base), fit=fit)
-        if oddsratio: stats[cat] = stats[cat].apply(foo)
-        stats[cat] = stats[cat].describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']]
-        stats[cat].drop('chain', inplace=True)
-        stats[cat].index = counts_all[cat].index
-    stats = pd.concat(stats)
-    counts = pd.concat(counts_all)
-    counts.name = 'counts'
-    return stats.merge(counts.to_frame(), left_index=True, right_index=True)
+        if causal:
+            for idx, key in zip([1, 2], ['Control', 'Treatment']):
+                counts[key][cat] = getcounts(cat, base, idx-1)
+                stats[key][cat] = tmp.get_posterior_samples(pars=['beta_%s[%i,%i]'%(dim.name, idx, i+1) for i in range(len(dd[cat]))], contrast='beta_%s[%i,%i]'%(dim.name, idx, base), fit=fit)
+                stats[key][cat].columns = ['beta_%s[%i]'%(dim.name, i+1) for i in range(len(dd[cat])) if i!=base-1]+['chain']
+            stats['Treatment-Control'][cat] = stats['Treatment'][cat] - stats['Control'][cat]
+            counts['Treatment-Control'][cat] = counts['Treatment'][cat] + counts['Control'][cat]
+            for key in stats: stats[key][cat] = summarize(stats[key][cat], counts[key][cat])
+        else:
+            counts[cat] = getcounts(cat, base, group)
+            stats[cat] = tmp.get_posterior_samples(pars=['beta_%s[%i]'%(dim.name, i+1) for i in range(len(dd[cat]))], contrast='beta_%s[%i]'%(dim.name, base), fit=fit)
+            stats[cat] = summarize(stats[cat], counts[cat])
+    if causal: out = pd.concat({key: mergecats(stats[key], counts[key]) for key in stats})
+    else: out = mergecats(stats, counts)
+    if save: out.to_csv('%s.csv'%save)
+    return out
 
-def stats_image_perceptions(fit, num_levels=5):
+def stats_image_perceptions(fit, num_levels=5, save=''):
     import numpy as np
     import pandas as pd
     from .bayesoc import Outcome, Model
@@ -613,9 +658,32 @@ def stats_image_perceptions(fit, num_levels=5):
             df = tmp.get_posterior_samples(fit=fit[i][m])
             out[i+1][m] = pd.DataFrame(np.array([foo(x) for x in df[['alpha[%i]'%(i+1) for i in range(num_levels-1)]].values]), columns= ['p[%i]'%(j+1) for j in range(num_levels)]).describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']]
         out[i+1] = pd.concat(out[i+1])
-    return pd.concat(out)
+    out = pd.concat(out)
+    if save: out.to_csv('%s.csv'%save)
+    return out
 
-def plot_image_perceptions(df, ylab=[], imagewise=False, legend_loc=0.1):
+def mean_image_perceptions(df, melt=True, save=''):
+    import pandas as pd
+    metrics = ['Vaccine Intent', 'Agreement', 'Trust', 'Fact-check', 'Share']
+    gmap = {0: 'Control', 1:'Treatment'}
+    vmap = {i-2: 'p[%i]'%(i+1) for i in range(5)}
+    out = {}
+    for group, d in df.groupby('Treatment'):
+        scores_all = {}
+        for i in range(5):
+            scores = {}
+            for m in metrics:
+                tmp = d['Image %i:%s'%(i+1, m)].value_counts().sort_index()
+                tmp = tmp/tmp.sum()
+                scores[m] = tmp.rename(vmap)            
+            if melt: scores_all[i+1] = pd.concat(scores).to_frame('mean')
+            else: scores_all[i+1] = pd.DataFrame(scores)
+        out[gmap[group]] = pd.concat(scores_all)
+    out = pd.concat(out)
+    if save: out.to_csv('%s.csv'%save)
+    return out
+
+def plot_image_perceptions(df, ylab=[], imagewise=False, legend_loc=(0.07, -0.1), save='', fmt='png'):
     import numpy as np
     import matplotlib.pyplot as plt
     import matplotlib
@@ -685,10 +753,11 @@ def plot_image_perceptions(df, ylab=[], imagewise=False, legend_loc=0.1):
                     flag = False
     plt.tight_layout()
     handles, labels = ax[0,0].get_legend_handles_labels()
-    ax_sup.legend(handles=handles, labels=labels, ncol=5, bbox_to_anchor=(0, -legend_loc), loc='lower left', fontsize=22.5)
+    ax_sup.legend(handles=handles, labels=labels, ncol=5, bbox_to_anchor=legend_loc, loc='lower left', fontsize=22.5)
+    if save: plt.savefig('%s.%s'%(save, fmt), dpi=180, bbox_inches='tight')
     plt.show()
 
-def stats_image_impact(fit, oddsratio=False, plot=False, num_metrics=5, num_images=5):
+def stats_image_impact(fit, oddsratio=False, plot=False, num_metrics=5, num_images=5, save=''):
     import numpy as np
     import pandas as pd
     from .bayesoc import Outcome, Model
@@ -698,10 +767,12 @@ def stats_image_impact(fit, oddsratio=False, plot=False, num_metrics=5, num_imag
     pars2 = ['gamma[%i]'%(i+1) for i in range(num_images)]
     df = tmp.get_posterior_samples(pars=pars, fit=fit)
     def foo(x): return np.exp(x)
-    if oddsratio: return df[pars].apply(foo).merge(tmp.get_posterior_samples(pars=pars2, fit=fit)[pars2], left_index=True, right_index=True).describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']]
-    else: return df[pars].merge(tmp.get_posterior_samples(pars=pars2, fit=fit)[pars2], left_index=True, right_index=True).describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']]
+    if oddsratio: out = df[pars].apply(foo).merge(tmp.get_posterior_samples(pars=pars2, fit=fit)[pars2], left_index=True, right_index=True).describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']]
+    else: out = df[pars].merge(tmp.get_posterior_samples(pars=pars2, fit=fit)[pars2], left_index=True, right_index=True).describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']]
+    if save: out.to_csv('%s.csv'%save)
+    return out
 
-def stats_filterbubble(fit, contrast=False):
+def stats_filterbubble(fit, contrast=False, save=''):
     import numpy as np
     from .bayesoc import Outcome, Model
     import pandas as pd
@@ -720,35 +791,92 @@ def stats_filterbubble(fit, contrast=False):
     else: names = ['Yes, definitely', 'Unsure, lean yes', 'Unsure, lean no', 'No, definitely not']
     out = pd.concat([pd.DataFrame(p[i].T, columns=['Yes']).describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']] for i in range(len(names))])
     out.index = names
+    if save: out.to_csv('%s.csv'%save)
     return out
 
-def combine_dfs(df_l, df_r, lsuffix='(1)', rsuffix='(2)', collapse=True, perc=False, atts=[]):
-    if collapse:
-        def foo(df):
-            import pandas as pd
-            out = []
-            for x, (lb, ub) in zip(df['mean'].values, zip(df['2.5%'].values, df['97.5%'].values)):
-                if perc: out.append('%.1f (%.1f, %.1f)'%(100*x, 100*lb, 100*ub))
-                else: out.append('%.2f (%.2f, %.2f)'%(x, lb, ub))
-            out = pd.DataFrame(out, index=df.index, columns=['Value'])
-            return out
-        df_l = foo(df_l)
-        df_r = foo(df_r)
-    df = df_l.join(df_r, lsuffix=' '+lsuffix, rsuffix=' '+rsuffix, how='outer')
-    #df.fillna('-', inplace=True)
-    if atts:
-        to_use = []
-        for att in atts: to_use += [a[0] for a in df.index if a[0][:len(att)]==att]
-        df = df.loc[to_use,:]
-    return df
-
-def unstack_df(df, perc=False):
-    def foo(df):
-        import pandas as pd
-        out = []
-        for x, (lb, ub) in zip(df['mean'].values, zip(df['2.5%'].values, df['97.5%'].values)):
+def collapse_df(df, perc=False, fmt=None, save=''):
+    import pandas as pd
+    out = []
+    if not isinstance(fmt, list): fmt = [fmt]*df.shape[0]
+    if 'mean' in list(df):
+        for (f, x), (lb, ub) in zip(zip(fmt, df['mean'].values), zip(df['2.5%'].values, df['97.5%'].values)):
             if perc: out.append('%.1f (%.1f, %.1f)'%(100*x, 100*lb, 100*ub))
-            else: out.append('%.2f (%.2f, %.2f)'%(x, lb, ub))
-        out = pd.Series(out, index=df.index)
-        return out
-    return foo(df).unstack()
+            else:
+                if f=='.1f': out.append('%.1f (%.1f, %.1f)'%(x, lb, ub))
+                elif f=='i': out.append('%i (%i, %i)'%(x, lb, ub))
+                else: out.append('%.2f (%.2f, %.2f)'%(x, lb, ub))
+    else:
+        for f, (lb, ub) in zip(fmt, zip(df['min'].values, df['max'].values)):
+            if perc: out.append('%.1f, %.1f'%(100*lb, 100*ub))
+            else:
+                if f=='.1f': out.append('%.1f, %.1f'%(lb, ub))
+                elif f=='i': out.append('%i, %i'%(lb, ub))
+                else: out.append('%.2f, %.2f'%(lb, ub))
+    out = pd.Series(out, index=df.index)
+    if save: out.to_csv('%s.csv'%save)
+    return out
+
+def unstack_df(df, by_first=False, save=''):
+    def order(index):
+        row, col = [], []
+        if by_first:
+            for i in index:
+                if len(i)==2:
+                    if i[-1] not in row: row.append(i[-1])
+                elif i[1:] not in row: row.append(i[1:])
+                if i[0] not in col: col.append(i[0])
+        else:
+            for i in index:
+                if len(i)==2:
+                    if i[0] not in row: row.append(i[0])
+                elif i[:-1] not in row: row.append(i[:-1])
+                if i[-1] not in col: col.append(i[-1])
+        return row, col
+    r, c = order(df.index)
+    if by_first:
+        import pandas as pd
+        out = pd.concat({i: df.loc[i] for i in c}, axis=1)
+    else: out = df.unstack().loc[r, c]
+    if save: out.to_csv('%s.csv'%save)
+    return out
+
+def subset_df(df, atts, reset=False, save=''):
+    import pandas as pd
+    if isinstance(atts, str): atts = [atts]
+    index = multi2index(df.index)
+    subidx, subval = [], []
+    for att in atts:
+        if att in index:
+            subidx += index[att]['idx']
+            subval += index[att]['val']
+    out = df.loc[subidx]
+    if reset:
+        out['index'] = subval
+        out.set_index('index', verify_integrity=True, inplace=True)
+        del out.index.name
+    if save: out.to_csv('%s.csv'%save)
+    return out
+
+def combine_idx(multiindex_l, multiindex_r):
+    index_l = multi2index(multiindex_l)
+    index_r = multi2index(multiindex_r)
+    index_lr = []
+    for idx in index_l:
+        index_lr += index_l[idx]['idx']
+        if idx in index_r:
+            for x in index_r[idx]['idx']:
+                if x not in index_lr: index_lr.append(x)
+    for idx in index_r:
+        if idx not in index_l: index_lr += index_r[idx]['idx']
+    return index_lr
+
+def combine_dfs(df_l, df_r, lsuffix='(1)', rsuffix='(2)', multi=True, axis=1, atts=[], reset=True, retain_order=True, fillna='-', save=''):
+    if multi:
+        import pandas as pd
+        df = pd.concat({lsuffix: df_l, rsuffix: df_r}, axis=axis)
+    else: df = df_l.join(df_r, lsuffix=' '+lsuffix, rsuffix=' '+rsuffix, how='outer')
+    if retain_order and axis==1: df = df.loc[combine_idx(df_l.index, df_r.index)]
+    if atts: df = subset_df(df, atts, reset=reset)
+    if fillna: df.fillna(fillna, inplace=True)
+    if save: df.to_csv('%s.csv'%save)
+    return df
