@@ -600,7 +600,7 @@ def plot_stats(df, demos=False, oddsratio=True, title='', subtitle=[], xlabel=''
     plt.show()
     return
 
-def plot_causal_flow(df, df_T, df_C, title='', save='', fmt='png'):
+def plot_causal_flow_(df, df_T, df_C, title='', save='', fmt='png'):
     def plot_sankey(group, dat):
         import plotly.graph_objects as go
         src, tgt, val = [], [], []
@@ -619,6 +619,26 @@ def plot_causal_flow(df, df_T, df_C, title='', save='', fmt='png'):
         if save: fig.write_image('%s_%s.%s'%(save, group, fmt), scale=4)
     plot_sankey('Treatment', df_T)
     plot_sankey('Control', df_C)
+
+def plot_causal_flow(df, title='', save='', fmt='png'):
+    def plot_sankey(group):
+        import plotly.graph_objects as go
+        src, tgt, val = [], [], []
+        labs = ['Yes, definitely', 'Unsure, lean yes', 'Unsure, lean no', 'No, definitely not']*2
+        for i in range(4):
+            for j in range(4, 8):
+                src.append(i)
+                tgt.append(j)
+                val.append(df['CATE'].loc[(group,labs[i],labs[j]), 'mean']*df['ATE'].loc[('Baseline',labs[i]), 'mean'])
+        fig = go.Figure(data=[go.Sankey( 
+        node = dict(pad=15, thickness=40, line=dict(color='salmon', width=0.5), color='salmon',
+                    label=['[%i] %s'%(round(100*y), x) for x, y in zip(labs[:4], df['ATE'].loc['Baseline', 'mean'])]+['%s [%i]'%(x, round(100*y)) for x, y in zip(labs[4:], df['ATE'].loc[group, 'mean'])]),
+        link = dict(source=src, target=tgt, value=val))])
+        fig.update_layout(title_text='%s %s'%(title, group), font_size=20)
+        fig.show()
+        if save: fig.write_image('%s_%s.%s'%(save, group, fmt), scale=4)
+    plot_sankey('Treatment')
+    plot_sankey('Control')
 
 def stats_socdem(fit, dd, df, atts=[], causal=True, group=None, oddsratio=True, save=''):
     import numpy as np
