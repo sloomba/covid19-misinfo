@@ -14,7 +14,7 @@ These notebooks are intended to aid importing, transforming, and analysing the s
 3. `.src/paper.py`: contains helper functions to generate all figures and tables of the paper
 4. `.src/models.py`: contains functions to define and fit all Bayesian models described in the paper
 5. `.src/utils.py`: contains helper functions to import and transform survey data, compute and plot posterior statistics
-6. `.src/bayesoc.py`: defines python classes `Dim()`, `Outcome()`, `Society()` and `Model()` to implement general Bayesian socio-demographic models using `pystan`
+6. `.src/bayesoc.py`: defines python classes `Dim()`, `Outcome()`, `Society()` and `Model()` to implement general Bayesian socio-demographic models using [`pystan`](https://pystan.readthedocs.io/en/latest/)
 
 ## Links
 1. View project on [OSF](https://osf.io/cxwvp/)
