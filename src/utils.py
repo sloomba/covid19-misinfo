@@ -523,7 +523,7 @@ def multi2index(index, suffix=''):
             else: att_cat[att[0]] = {'idx': [att], 'val': [att[1]+suffix]}
     return att_cat
 
-def plot_stats(df, demos=False, oddsratio=True, title='', subtitle=[], xlabel='', subxlabel=[], tick_suffix='', label_suffix='', ylabel=True, bars=False, factor=0.4, signsize=10, ticksize=10, labelsize=12, titlesize=14, subtitlesize=10, hspace=0.2, wspace=0.05, align_labels=False, title_loc=0.0, label_loc=0.05, highlight=False, save='', fmt='png'):
+def plot_stats(df, demos=False, oddsratio=True, title='', subtitle=[], xlabel='', subxlabel=[], tick_suffix='', label_suffix='', label_text='', ylabel=True, bars=False, factor=0.4, signsize=10, ticksize=10, labelsize=12, titlesize=14, subtitlesize=10, hspace=0.2, wspace=0.05, align_labels=False, title_loc=0.0, label_loc=0.0, highlight=False, save='', fmt='png'):
     if not isinstance(df, list): df = [df]
     if isinstance(subtitle, str): subtitle = [subtitle]*len(df)
     if isinstance(subxlabel, str): subxlabel = [subxlabel]*len(df)
@@ -593,7 +593,7 @@ def plot_stats(df, demos=False, oddsratio=True, title='', subtitle=[], xlabel=''
     plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
     if xlabel: plt.xlabel(xlabel)
     ax = plt.gca()
-    ax.text(1+label_loc, 1.01, '$(N_T, N_C, N)$', size=subtitlesize, transform=ax.transAxes)
+    if label_text: ax.text(1+label_loc, 1.01, label_text, size=subtitlesize, transform=ax.transAxes)
     plt.subplots_adjust(hspace=hspace, wspace=wspace)
     #fig.tight_layout()
     if save: plt.savefig('%s.%s'%(save, fmt), dpi=180, bbox_inches='tight')
