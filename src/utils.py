@@ -1,7 +1,14 @@
-def read_table(filename, datadir='./out', levels=1):
+def read_table(filename, datadir='./out', levels=None):
     import pandas as pd
     import os
-    df = pd.read_csv(os.path.join(datadir, filename), index_col=list(range(levels)))
+    file = os.path.join(datadir, filename)
+    if levels is None:
+        levels = 0
+        with open(file, 'r') as fd:
+            for i in fd.readline().split(','):
+                if i: break
+                else: levels += 1
+    df = pd.read_csv(file, index_col=list(range(levels)))
     return df
 
 def import_datadict(datadir='./dat', filename='orb_datadict.txt'):
@@ -389,27 +396,31 @@ def count_attribute(df, att, by_att=None, norm=False, where=None, dd={}, plot=Fa
             counts.append(group[att].value_counts())
         counts = concat(counts, axis=1, keys=names, sort=True)
         if dd:
-            counts = counts[dd[by_att].keys()]
-            counts.rename(columns=dd[by_att], inplace=True)
+            if by_att in dd:
+                counts = counts[dd[by_att].keys()]
+                counts.rename(columns=dd[by_att], inplace=True)
     counts.fillna(0, inplace=True)
     if norm: counts = counts/counts.values.sum(0)
     if dd:
-        counts = counts.loc[dd[att].keys()]
-        counts.rename(index=dd[att], inplace=True)
+        if att in dd:
+            counts = counts.loc[dd[att].keys()]
+            counts.rename(index=dd[att], inplace=True)
     if plot:
         import matplotlib.pyplot as plt
         from seaborn import countplot
         plt.figure(dpi=dpi)
         order, hue_order = None, None
         if dd:
-            if by_att is not None:
+            if by_att is not None and by_att in dd and att in dd:
                 df = df[[att,by_att]]
                 df = df.replace({att: dd[att], by_att: dd[by_att]})
                 hue_order = dd[by_att].values()
+                order = dd[att].values()
             else:
-                df = df[[att]]
-                df = df.replace({att: dd[att]})
-            order = dd[att].values()
+                if att in dd:
+                    df = df[[att]]
+                    df = df.replace({att: dd[att]})
+                    order = dd[att].values()
         if by_att is None: countplot(y=att, data=df, order=order)
         else: countplot(y=att, hue=by_att, data=df, order=order, hue_order=hue_order)
         plt.gca().set_xlabel('Count')
@@ -465,24 +476,36 @@ def stats_impact_causal(fit, save=''):
     k = 4
     def foo(x): return np.diff(np.hstack([0, np.exp(x)/(1+np.exp(x)), 1]))
     df = Model(Outcome()).get_posterior_samples(fit=fit)
-    prob = []
-    dfs = [[], [], []]
+    prob_full, prob = [], []
+    dfs_full, dfs = [], [[], [], []]
     names = ['Yes, definitely', 'Unsure, lean yes', 'Unsure, lean no', 'No, definitely not']
-    for i in range(1, m+1):        
+    p_pre = [foo(x) for x in df[['alpha_pre[%i]'%j for j in range(1, k)]].values]
+    for i in range(1, m+1):
+        alpha_pre = df[['alpha_pre[%i]'%j for j in range(1, k)]].values
         beta = np.hstack([np.zeros((df.shape[0],1)), df[['beta[%i]'%i]].values*df[['delta[%i,%i]'%(i, j) for j in range(1, k)]].values.cumsum(axis=1)])
         alpha = df[['alpha[%i,%i]'%(i, j) for j in range(1, k)]].values
-        p = []
-        for (a, b) in zip(alpha, beta): p.append(np.array([foo(a-b_) for b_ in b]))
+        p_full, p = [], []
+        for (p_p, a, b) in zip(p_pre, alpha, beta):
+            p.append(np.array([foo(a-b_) for b_ in b]))
+            p_full.append((p_p[:,np.newaxis]*p[-1]).sum(axis=0))
+        prob_full.append(np.vstack(p_full))
         prob.append(np.dstack(p))
+        dfs_full.append(pd.DataFrame(prob_full[-1], columns=names).describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']])
         for j in range(k):
             dfs[i-1].append(pd.DataFrame(prob[-1][j].T, columns=names).describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']])
+    diff_full = prob_full[1] - prob_full[0]
     diff = prob[1]-prob[0]
+    dfs_full.append(pd.DataFrame(diff_full, columns=names).describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']])
+    dfs_full.append(pd.DataFrame(p_pre, columns=names).describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']])
     for i in range(k):
         dfs[-1].append(pd.DataFrame(diff[i].T, columns=names).describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']])
-    groups = ['Control', 'Treatment', 'Treatment-Control']
-    out = pd.concat({groups[i]: pd.concat({names[j]: dfs[i][j] for j in range(len(names))}) for i in range(len(groups))})
-    if save: out.to_csv('%s.csv'%save)
-    return out
+    groups = ['Control', 'Treatment', 'Treatment-Control', 'Baseline']
+    out = pd.concat({groups[i]: pd.concat({names[j]: dfs[i][j] for j in range(len(names))}) for i in range(len(groups)-1)})
+    out_full = pd.concat({groups[i]: dfs_full[i] for i in range(len(groups))})
+    if save:
+        out.to_csv('%s_CATE.csv'%save)
+        out_full.to_csv('%s_ATE.csv'%save)
+    return {'ATE':out_full, 'CATE':out}
 
 def multi2index(index, suffix=''):
     att_cat = {}
@@ -500,7 +523,7 @@ def multi2index(index, suffix=''):
             else: att_cat[att[0]] = {'idx': [att], 'val': [att[1]+suffix]}
     return att_cat
 
-def plot_stats(df, demos=False, oddsratio=True, title='', subtitle=[], xlabel='', subxlabel=[], tick_suffix='', label_suffix='', ylabel=True, factor=0.4, signsize=10, ticksize=10, labelsize=12, titlesize=14, hspace=0.2, wspace=0.05, align_labels=False, title_loc=0.0, save='', fmt='png'):
+def plot_stats(df, demos=False, oddsratio=True, title='', subtitle=[], xlabel='', subxlabel=[], tick_suffix='', label_suffix='', ylabel=True, bars=False, factor=0.4, signsize=10, ticksize=10, labelsize=12, titlesize=14, subtitlesize=10, hspace=0.2, wspace=0.05, align_labels=False, title_loc=0.0, label_loc=0.05, highlight=False, save='', fmt='png'):
     if not isinstance(df, list): df = [df]
     if isinstance(subtitle, str): subtitle = [subtitle]*len(df)
     if isinstance(subxlabel, str): subxlabel = [subxlabel]*len(df)
@@ -528,18 +551,25 @@ def plot_stats(df, demos=False, oddsratio=True, title='', subtitle=[], xlabel=''
     
     def plot_bars(ax, tmp, ticks=[], right=False, base=False):
         num = tmp.shape[0]
+        if highlight: colors = ['k' if tmp['2.5%'][tmp.index[i]]<oddsratio<tmp['97.5%'][tmp.index[i]] else 'r' for i in range(num)]
+        else: colors = 'k'
         if base:
-            ax.barh(y=list(range(num+1, num+2-base, -1))+list(range(num+1-base, 0, -1)), width=tmp['mean'].values, xerr=np.vstack([(tmp['mean']-tmp['2.5%']).values, (tmp['97.5%']-tmp['mean']).values]), color='salmon')
+            if bars: ax.barh(y=list(range(num+1, num+2-base, -1))+list(range(num+1-base, 0, -1)), width=tmp['mean'].values, xerr=np.vstack([(tmp['mean']-tmp['2.5%']).values, (tmp['97.5%']-tmp['mean']).values]), color='salmon')
+            else: ax.errorbar(x=tmp['mean'].values, y=list(range(num+1, num+2-base, -1))+list(range(num+1-base, 0, -1)), xerr=np.vstack([(tmp['mean']-tmp['2.5%']).values, (tmp['97.5%']-tmp['mean']).values]), ecolor=colors, marker='o', color='k', ls='')
             ax.text(0, num+2-base, 'REFERENCE', size=ticksize)
-        else: ax.barh(y=range(num, 0, -1), width=tmp['mean'].values, xerr=np.vstack([(tmp['mean']-tmp['2.5%']).values, (tmp['97.5%']-tmp['mean']).values]), color='salmon')
-        ax.axvline(oddsratio, ls='--', color='black')
-        for i in range(num):
-            lb, ub = tmp['2.5%'][tmp.index[i]], tmp['97.5%'][tmp.index[i]]
-            if not (lb<oddsratio<ub):
-                if lb<0: ax.text(lb, num-i, '*', size=signsize)
-                else: ax.text(ub, num-i, '*', size=signsize)
+        else:
+            if bars: ax.barh(y=range(num, 0, -1), width=tmp['mean'].values, xerr=np.vstack([(tmp['mean']-tmp['2.5%']).values, (tmp['97.5%']-tmp['mean']).values]), color='salmon')
+            else: ax.errorbar(x=tmp['mean'].values, y=range(num, 0, -1), xerr=np.vstack([(tmp['mean']-tmp['2.5%']).values, (tmp['97.5%']-tmp['mean']).values]), ecolor=colors, marker='o', color='k', ls='')
+        if bars and highlight:
+            for i in range(num):
+                lb, ub = tmp['2.5%'][tmp.index[i]], tmp['97.5%'][tmp.index[i]]
+                if not (lb<oddsratio<ub):
+                    if lb<0: ax.text(lb, num-i, '*', size=signsize)
+                    else: ax.text(ub, num-i, '*', size=signsize)
+        else: ax.set_ylim(1-0.5, num+0.5)
         if ticks: t = range(1, num+1)
         else: t = []
+        ax.axvline(oddsratio, ls=':', color='gray')
         ax.yaxis.set_ticklabels(reversed(ticks))
         ax.yaxis.set_ticks(t)
         if right: ax.yaxis.tick_right()
@@ -554,16 +584,17 @@ def plot_stats(df, demos=False, oddsratio=True, title='', subtitle=[], xlabel=''
                 except: c = []
                 plot_bars(ax[i,j], df[j].loc[att_cat[names[i]]['idx']], c, right=True)
             else: plot_bars(ax[i,j], df[j].loc[att_cat[names[i]]['idx']])
-            if i==0 and subtitle: ax[i,j].set_title(subtitle[j])
+            if i==0 and subtitle: ax[i,j].set_title(subtitle[j], fontsize=subtitlesize)
             if i==rows-1 and subxlabel: ax[i,j].set_xlabel(subxlabel[j], fontsize=labelsize)
 
     if align_labels: fig.align_ylabels()
     if title: plt.suptitle(title, fontsize=titlesize, y=1+title_loc)
-    if xlabel:
-        fig.add_subplot(111, frameon=False)
-        plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
-        plt.xlabel(xlabel, fontsize=labelsize)
-        plt.subplots_adjust(hspace=hspace, wspace=wspace)
+    fig.add_subplot(111, frameon=False)
+    plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
+    if xlabel: plt.xlabel(xlabel)
+    ax = plt.gca()
+    ax.text(1+label_loc, 1.01, '$(N_T, N_C, N)$', size=subtitlesize, transform=ax.transAxes)
+    plt.subplots_adjust(hspace=hspace, wspace=wspace)
     #fig.tight_layout()
     if save: plt.savefig('%s.%s'%(save, fmt), dpi=180, bbox_inches='tight')
     plt.show()
@@ -645,23 +676,6 @@ def stats_socdem(fit, dd, df, atts=[], causal=True, group=None, oddsratio=True, 
     if save: out.to_csv('%s.csv'%save)
     return out
 
-def stats_image_perceptions(fit, num_levels=5, save=''):
-    import numpy as np
-    import pandas as pd
-    from .bayesoc import Outcome, Model
-    def foo(x): return np.diff(np.hstack([0, np.exp(x)/(1+np.exp(x)), 1]))
-    tmp = Model(Outcome())
-    out = {}
-    for i in range(len(fit)):
-        out[i+1] = {}
-        for m in fit[i]:
-            df = tmp.get_posterior_samples(fit=fit[i][m])
-            out[i+1][m] = pd.DataFrame(np.array([foo(x) for x in df[['alpha[%i]'%(i+1) for i in range(num_levels-1)]].values]), columns= ['p[%i]'%(j+1) for j in range(num_levels)]).describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']]
-        out[i+1] = pd.concat(out[i+1])
-    out = pd.concat(out)
-    if save: out.to_csv('%s.csv'%save)
-    return out
-
 def mean_image_perceptions(df, melt=True, save=''):
     import pandas as pd
     metrics = ['Vaccine Intent', 'Agreement', 'Trust', 'Fact-check', 'Share']
@@ -689,7 +703,7 @@ def plot_image_perceptions(df, ylab=[], imagewise=False, legend_loc=(0.07, -0.1)
     import matplotlib
     
     if not isinstance(df, list): df = [df]
-    questions = {'Vaccine Intent': 'Raises Vaccine Intent', 'Agreement': 'Agree with', 'Trust': 'Have trust in', 'Fact-check': 'Will fact-check', 'Share': 'Will share'}
+    questions = {'Vaccine Intent': 'Raises Vaccine Intent', 'Agreement': 'Agree with information', 'Trust': 'Have trust in', 'Fact-check': 'Will fact-check', 'Share': 'Will share'}
     categories = dict(zip(['p[%i]'%(i+1) for i in range(5)], ['Strongly disagree', 'Somewhat disagree', 'Neither', 'Somewhat agree', 'Strongly agree']))
     
     def survey(results, category_names, ax=None):
@@ -762,7 +776,7 @@ def stats_image_impact(fit, oddsratio=False, plot=False, num_metrics=5, num_imag
     import pandas as pd
     from .bayesoc import Outcome, Model
     tmp = Model(Outcome())
-    pars = ['beta[%i]'%(i+1) for i in range(num_metrics)]
+    pars = ['beta_img[%i]'%(i+1) for i in range(num_metrics)]
     if plot: tmp.plot_posterior_pairs(fit=fit, pars=pars)
     pars2 = ['gamma[%i]'%(i+1) for i in range(num_images)]
     df = tmp.get_posterior_samples(pars=pars, fit=fit)
@@ -772,7 +786,7 @@ def stats_image_impact(fit, oddsratio=False, plot=False, num_metrics=5, num_imag
     if save: out.to_csv('%s.csv'%save)
     return out
 
-def stats_filterbubble(fit, contrast=False, save=''):
+def stats_similar_content(fit, save=''):
     import numpy as np
     from .bayesoc import Outcome, Model
     import pandas as pd
@@ -780,17 +794,29 @@ def stats_filterbubble(fit, contrast=False, save=''):
     k = 4
     def foo(x): return np.diff(np.hstack([0, np.exp(x)/(1+np.exp(x)), 1]))
     df = Model(Outcome()).get_posterior_samples(fit=fit)
-    beta = df[['beta[%i]'%i for i in range(1, k+1)]].values
-    alpha = df[['alpha[%i]'%i for i in range(1, m)]].values
-    p = []
-    for (a, b) in zip(alpha, beta): p.append(np.array([foo(a-b_) for b_ in b]))
-    p = np.dstack(p)[:,-1,:]
-    if contrast:
-        p = (p-p[0])[1:]
-        names = ['Unsure, lean yes', 'Unsure, lean no', 'No, definitely not']
-    else: names = ['Yes, definitely', 'Unsure, lean yes', 'Unsure, lean no', 'No, definitely not']
-    out = pd.concat([pd.DataFrame(p[i].T, columns=['Yes']).describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']] for i in range(len(names))])
-    out.index = names
+    def get_p(kind='pre'):
+        beta = [[np.zeros((df.shape[0], 1)), df['beta_%s[%i]'%(kind, i)].values[:,np.newaxis]] for i in range(1, m+1)]
+        alpha = [df[['alpha_%s[%i,%i]'%(kind, i, j) for j in range(1, k)]].values for i in range(1, m+1)]
+        if kind=='post':
+            for i in range(1, m+1):
+                beta[i-1][0] = np.hstack([np.zeros((df.shape[0], 1)), df['beta[%i]'%i].values[:,np.newaxis]*df[['delta[%i,%i]'%(i, j) for j in range(1, k)]].values])
+                beta[i-1][1] = beta[i-1][1] + beta[i-1][0]
+        p = [[], []]
+        for i in range(m):
+            for (a, b0, b1) in zip(alpha[i], beta[i][0], beta[i][1]): p[i].append(np.stack([[foo(a-b) for b in b0], [foo(a-b) for b in b1]]))
+            p[i] = np.stack(p[i])
+            if kind=='pre': p[i] = p[i][:,:,0,:]
+        return p
+    p = {k:get_p(k) for k in ['pre', 'post']}
+    p['post marg'] = [(p['pre'][i][:,:,:,np.newaxis]*p['post'][i]).sum(2) for i in range(m)]
+    for k in p:
+        for i in range(m): p[k][i] = np.concatenate([p[k][i], (p[k][i][:,1,:] - p[k][i][:,0,:])[:,np.newaxis,:]], axis=1)
+        p[k].append(p[k][1]-p[k][0])
+    names = ['Yes, definitely', 'Unsure, lean yes', 'Unsure, lean no', 'No, definitely not']
+    label = ['Not seen', 'Seen', 'Seen-Not seen']
+    group = ['Control', 'Treatment', 'Treatment-Control']
+    kind = {'pre': 'Pre-exposure', 'post marg': 'Post-exposure'}
+    out = pd.concat({kind[key]: pd.concat({group[i]: pd.concat({label[j]: pd.DataFrame(p[key][i][:,j], columns=names).describe(percentiles=[0.025, 0.975]).T[['mean', '2.5%', '97.5%']] for j in range(len(label))}) for i in range(len(group))}) for key in ['pre', 'post marg']})
     if save: out.to_csv('%s.csv'%save)
     return out
 
@@ -842,18 +868,22 @@ def unstack_df(df, by_first=False, save=''):
 
 def subset_df(df, atts, reset=False, save=''):
     import pandas as pd
-    if isinstance(atts, str): atts = [atts]
-    index = multi2index(df.index)
-    subidx, subval = [], []
-    for att in atts:
-        if att in index:
-            subidx += index[att]['idx']
-            subval += index[att]['val']
-    out = df.loc[subidx]
-    if reset:
-        out['index'] = subval
-        out.set_index('index', verify_integrity=True, inplace=True)
-        del out.index.name
+    if isinstance(atts, (str, tuple)): atts = [atts]
+    if isinstance(atts[0], str):
+        index = multi2index(df.index)
+        subidx, subval = [], []
+        for att in atts:
+            if att in index:
+                subidx += index[att]['idx']
+                subval += index[att]['val']
+        out = df.loc[subidx]
+        if reset:
+            out['index'] = subval
+            out.set_index('index', verify_integrity=True, inplace=True)
+            del out.index.name
+    else:
+        if isinstance(df, pd.core.frame.DataFrame) and len(df.index[0])==len(atts[0]): out = pd.DataFrame.from_dict({att: df.loc[att] for att in atts}, orient='index')
+        else: out = pd.concat({att: df.loc[att] for att in atts})
     if save: out.to_csv('%s.csv'%save)
     return out
 
@@ -880,3 +910,9 @@ def combine_dfs(df_l, df_r, lsuffix='(1)', rsuffix='(2)', multi=True, axis=1, at
     if fillna: df.fillna(fillna, inplace=True)
     if save: df.to_csv('%s.csv'%save)
     return df
+
+def organize_df(df, perc=False, fmt=None, unstack=False, by_first=False, atts=[]):
+    tmp = collapse_df(df, perc=perc, fmt=fmt)
+    if unstack and isinstance(df.index[0], tuple) and len(df.index[0])>2: tmp = unstack_df(tmp, by_first=by_first)
+    if atts: tmp = subset_df(tmp, atts=atts)
+    return tmp

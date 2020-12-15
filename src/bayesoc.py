@@ -411,10 +411,13 @@ class Model():
     
     def get_posterior_samples(self, pars=None, contrast=None, fit=None, as_df=True):
         if fit is None: fit = self.fit
-        if pars is None: pars = fit.flatnames
+        if pars is None:
+            try: pars = fit.flatnames
+            except AttributeError as err: pars = list(fit)
         if contrast is not None and contrast not in pars: raise ValueError('variable to contrast with must be included in pars')
-        samples = fit.extract(pars=pars, permuted=False)
-        if contrast is not None: samples = {par+' - '+contrast: samples[par]-samples[contrast] for par in samples if par!=contrast}
+        try: samples = fit.extract(pars=pars, permuted=False)
+        except AttributeError as err: samples = fit.copy()
+        if contrast is not None: samples = {par+' - '+contrast: samples[par]-samples[contrast] if par!='chain' else samples[par] for par in samples if par!=contrast}
         if as_df:
             import numpy as np
             import pandas as pd
