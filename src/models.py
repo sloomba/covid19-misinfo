@@ -2,7 +2,7 @@ NUM_SAMPLES = 2000 #number of samples per chain; 4 chains total
 ADAPT_DELTA = 0.9 #target Metropolis acceptance rate; larger for finer sampling
 M_TREEDEPTH = 10
 
-def model_impact_causal(df, kind='self', prior_beta=1., prior_delta=1., prior_alpha=1., prior_mu_beta=1., prior_mu_alpha=1., iters=NUM_SAMPLES, adapt_delta=ADAPT_DELTA, max_treedepth=M_TREEDEPTH):
+def model_impact_causal(df, kind='self', prior_beta=1., prior_delta=1., prior_alpha=1., prior_mu_beta=1., prior_mu_alpha=1., code_only=False, iters=NUM_SAMPLES, adapt_delta=ADAPT_DELTA, max_treedepth=M_TREEDEPTH):
     # Model: Eqs. 1 & 2, with `f=0`
     # Results: Tables 1, S2; Figure 4
     import pystan as st
@@ -44,11 +44,12 @@ def model_impact_causal(df, kind='self', prior_beta=1., prior_delta=1., prior_al
     data = {'n':df.shape[0], 'm':2, 'k':4, 'x_cond':df['Treatment'].values+1, 
             'y_pre':df['Vaccine Intent for %s (Pre)'%kind].values, 
             'y_post':df['Vaccine Intent for %s (Post)'%kind].values}
+    if code_only: return model_code
     model = st.StanModel(model_code=model_code)
     fit = model.sampling(data=data, iter=iters, control=dict(adapt_delta=adapt_delta, max_treedepth=max_treedepth))
     return fit
 
-def model_socdem(df, dd, atts=[], model_name='causal', group=None, kind='self', decrease=0, prior_beta=1., prior_delta=1., prior_alpha=1., prior_mu_beta=1., prior_mu_alpha=1., iters=NUM_SAMPLES, adapt_delta=ADAPT_DELTA, max_treedepth=M_TREEDEPTH):
+def model_socdem(df, dd, atts=[], model_name='causal', group=None, kind='self', decrease=0, prior_beta=1., prior_delta=1., prior_alpha=1., prior_mu_beta=1., prior_mu_alpha=1., code_only=False, iters=NUM_SAMPLES, adapt_delta=ADAPT_DELTA, max_treedepth=M_TREEDEPTH):
     # Model: Eqs. 1 & 2, with `f` modeling a linear combination of socio-demographics and other covariates
     # Results: Tables S3, S4, S5, S6; Figures 5, S1, S2, S3
     import pystan as st
@@ -199,11 +200,12 @@ def model_socdem(df, dd, atts=[], model_name='causal', group=None, kind='self', 
         data['k_%s'%name] = len(dd[cats[i]])
         data[name] = np.array(df[cats[i]].values, dtype=int)
         if data[name].min()==0: data[name] += 1
+    if code_only: return model_code[model_name]
     model = st.StanModel(model_code=model_code[model_name])
     fit = model.sampling(data=data, iter=iters, control=dict(adapt_delta=adapt_delta, max_treedepth=max_treedepth))
     return fit
 
-def model_image_impact(df, group=1, kind='self', prior_beta=1., prior_delta=1., prior_gamma=1., prior_alpha=1., iters=NUM_SAMPLES, adapt_delta=ADAPT_DELTA, max_treedepth=M_TREEDEPTH):
+def model_image_impact(df, group=1, kind='self', prior_beta=1., prior_delta=1., prior_gamma=1., prior_alpha=1., code_only=False, iters=NUM_SAMPLES, adapt_delta=ADAPT_DELTA, max_treedepth=M_TREEDEPTH):
     # Model: Eq. 7
     # Results: Table S7
     import pystan as st
@@ -252,11 +254,12 @@ def model_image_impact(df, group=1, kind='self', prior_beta=1., prior_delta=1., 
     data = {'n':df.shape[0], 'p':5, 'm':len(metrics), 'k':4, 'x_img':x,
             'y_pre':df['Vaccine Intent for %s (Pre)'%kind].values, 
             'y_post':df['Vaccine Intent for %s (Post)'%kind].values}
+    if code_only: return model_code
     model = st.StanModel(model_code=model_code)
     fit = model.sampling(data=data, iter=iters, control=dict(adapt_delta=adapt_delta, max_treedepth=max_treedepth))
     return fit
 
-def model_similar_content(df, model_name='seen', kind='self', prior_beta=1., prior_alpha=1., prior_delta=1., prior_mu_beta=1., prior_mu_alpha=1., iters=NUM_SAMPLES, adapt_delta=ADAPT_DELTA, max_treedepth=M_TREEDEPTH):
+def model_similar_content(df, model_name='seen', kind='self', prior_beta=1., prior_alpha=1., prior_delta=1., prior_mu_beta=1., prior_mu_alpha=1., code_only=False, iters=NUM_SAMPLES, adapt_delta=ADAPT_DELTA, max_treedepth=M_TREEDEPTH):
     import pystan as st
     import numpy as np
     model_code = {
@@ -396,6 +399,7 @@ def model_similar_content(df, model_name='seen', kind='self', prior_beta=1., pri
             'y_pre':df['Vaccine Intent for %s (Pre)'%kind].values,
             'x_seen':[i%2 for i in df['Seen such online content'].values]} #"yes":1, "no":0
     if model_name=='causal': data['y_post'] = df['Vaccine Intent for %s (Post)'%kind].values
+    if code_only: return model_code
     model = st.StanModel(model_code=model_code[model_name])
     fit = model.sampling(data=data, iter=iters, control=dict(adapt_delta=adapt_delta, max_treedepth=max_treedepth))
     return fit
