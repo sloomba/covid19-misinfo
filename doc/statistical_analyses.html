@@ -13200,7 +13200,7 @@ $$\eta(g,x;x_0)=\beta^g_x-\beta^g_{x_0}$$$$\implies \Delta(x;x_0)=(\beta^T_x-\be
 $$Y(i)|G(i)=g,W(i),X(i) \sim \mathrm{OrderedLogistic}\left(\left[\beta_W^g\sum_{j=1}^{W(i)-1}\delta_j^g\right]+\sum_{j=1}^5\sum_{k=1}^5\beta_j^gX_{jk}(i)\gamma_k^g, (\alpha_1^g,\alpha_2^g,\alpha_3^g)\right).$$</p>
 <p>This allows one to gauge both (a) which images have the most impact in group $G=g$ (from $\gamma_k^g$) and (b) which image metrics have the most impact in group $G=g$ (from $\beta_j^g\in\mathbb{R}$).</p>
 <h3 id="Model-Inference">Model Inference<a class="anchor-link" href="#Model-Inference">&#182;</a></h3><p>As mentioned above, Bayesian inference is performed to infer posterior distributions on all model parameters, and statistics---percentages, log odds-ratios, parameters---described above. While the mean of the statistics can be used to judge the effect size, we also provide 95% percentile posterior credible intervals (in parantheses next to mean estimates) to judge probable values of the effect size, and thus some sense of "significance" of the effect. Any Bayesian model requires placing prior distributions on model parameters. We make use of regularizing hierarchical priors wherever possible, to prevent detection of spurious effects. For full details, refer to specific model details in the <em>Methods</em> section. We employ 4 chains of 2000 iterations, i.e. 4000 samples excluding warmup, and will also report diagnostics below to ensure that the HMC chains are converging as expected.</p>
-<h2 id="Running-the-Models">Running the Models<a class="anchor-link" href="#Running-the-Models">&#182;</a></h2><h3 id="(Average)-Treatment-Effects">(Average) Treatment Effects<a class="anchor-link" href="#(Average)-Treatment-Effects">&#182;</a></h3><p>First, we will run the model to estimate causal effects. <strong>This contributes to Tables 1, S1 and Figure 4 of the paper.</strong> Let us print the <code>stan</code> model code for this model:</p>
+<h2 id="Running-the-Models">Running the Models<a class="anchor-link" href="#Running-the-Models">&#182;</a></h2><h3 id="(Average)-Treatment-Effects">(Average) Treatment Effects<a class="anchor-link" href="#(Average)-Treatment-Effects">&#182;</a></h3><p>First, we will run the model to estimate causal effects. <strong>This contributes to Table 1, Figure 2, and Supplementary Table 2 of the paper.</strong> Let us print the <code>stan</code> model code for this model:</p>
 
 </div>
 </div>
@@ -13822,8 +13822,7 @@ alpha_pre[3]  2.75  2.62   2.88  6421   1.0
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Interestingly, looking at the baseline intent here with 63.7% saying "definitely", it is much higher than what we saw when people were asked about the intent to protect themselves (above). This might have implications for altruistic campaigns promoting COVID-19 vaccinations. We can similarly compute the treatment effects $\Delta_W(y;w)$ for the "OTHER" type question, which shows similar trends as above.</p>
-<p>The above contributes to <strong>Tables S1, S2</strong> and <strong>Figures S1, S2</strong> of the paper. Let's generate those figures for a simple visual interpretation by using a helper function.</p>
+<p>Interestingly, looking at the baseline intent here with 63.7% saying "definitely", it is much higher than what we saw when people were asked about the intent to protect themselves (above). This might have implications for altruistic campaigns promoting COVID-19 vaccinations. We can similarly compute the treatment effects $\Delta_W(y;w)$ for the "OTHER" type question, which shows similar trends as above. Let's generate those figures for a simple visual interpretation by using a helper function.</p>
 
 </div>
 </div>
@@ -13967,7 +13966,7 @@ if (outputEl) {{
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <h3 id="Heterogeneous-Treatment-Effects">Heterogeneous Treatment Effects<a class="anchor-link" href="#Heterogeneous-Treatment-Effects">&#182;</a></h3><p>Once we have established that misinformation does impact vaccine acceptance, we can look at the socio-econo-demographic determinants of this hesitancy, and if certain groups of people might be more susceptible to COVID-19 vaccine misinformation.
-<strong>This contributes to Tables S3, S4, S5, S6 and Figures 5, S1, S2, S3 of the paper.</strong> Let us print the <code>stan</code> model code for this model:</p>
+<strong>This contributes to Figure 3, Supplementary Figures 1, 2, 3, 4 and Supplementary Tables 3, 4, 5, 6 of the paper.</strong> Let us print the <code>stan</code> model code for this model:</p>
 
 </div>
 </div>
@@ -14815,7 +14814,7 @@ mu_beta_Trust_None_of_these ~ normal(0, 1.000000);for (i in 1:m)
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>It's interesting that those trusting the "conventional" sources of information don't seem to be differentially affected by exposure, but trust in celebrities is strongly indicative of more robustness to misinformation.</p>
-<h3 id="Image-Impact">Image Impact<a class="anchor-link" href="#Image-Impact">&#182;</a></h3><p>As mentioned above, after exposure to the 5 pieces of misinformation (treatment) or factual information (control), the respondents were asked 5 follow-up questions to judge their perception of each of the images they were shown. Let us plot the mean of the respondent's perceptions of each image they were shown, using a helper functions <code>mean_image_perceptions()</code> and <code>plot_image_perceptions()</code> from <code>src/utils.py</code>. <strong>This contributes to Figure 6 of the paper.</strong></p>
+<h3 id="Image-Impact">Image Impact<a class="anchor-link" href="#Image-Impact">&#182;</a></h3><p>As mentioned above, after exposure to the 5 pieces of misinformation (treatment) or factual information (control), the respondents were asked 5 follow-up questions to judge their perception of each of the images they were shown. Let us plot the mean of the respondent's perceptions of each image they were shown, using a helper functions <code>mean_image_perceptions()</code> and <code>plot_image_perceptions()</code> from <code>src/utils.py</code>. <strong>This contributes to Figure 4 of the paper.</strong></p>
 
 </div>
 </div>
@@ -14872,7 +14871,7 @@ mu_beta_Trust_None_of_these ~ normal(0, 1.000000);for (i in 1:m)
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>Evidently, upon seeing the misinformation images (treatment), people's "self-reported" vaccine intent lowers more than it rises (red bars longer than blue ones), and we note the opposite effect for factual images (control). This is interesting, because as noted in the first set of models, while there is indeed the <em>measured</em> drop in vaccine intent upon seeing misinformation, there was no aggregate <em>measured</em> change upon seeing the factual information, even though people "self-report" otherwise. For all other image-metrics, it is evident that people are more likely to agree with have trust in, and share the factual information; and less likely to fact-check it, when compared to misinformation.</p>
-<p>One interesting follow-up analysis is to use the self-reported image metrics as "features" of the images, to compute the contribution every image has in lowering the measured vaccine intent. Let us print the <code>stan</code> code for that model, run it for both treatment and control images, and infer the image weights. <strong>This contributes to Table S7 of the paper.</strong></p>
+<p>One interesting follow-up analysis is to use the self-reported image metrics as "features" of the images, to compute the contribution every image has in lowering the measured vaccine intent. Let us print the <code>stan</code> code for that model, run it for both treatment and control images, and infer the image weights. <strong>This contributes to Supplementary Table 7 of the paper.</strong></p>
 
 </div>
 </div>
