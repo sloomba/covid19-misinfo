@@ -523,7 +523,10 @@ def multi2index(index, suffix=''):
             else: att_cat[att[0]] = {'idx': [att], 'val': [att[1]+suffix]}
     return att_cat
 
-def plot_stats(df, demos=False, oddsratio=True, title='', subtitle=[], xlabel='', subxlabel=[], tick_suffix='', label_suffix='', label_text='', ylabel=True, bars=False, factor=0.4, signsize=10, ticksize=10, labelsize=12, titlesize=14, subtitlesize=10, hspace=0.2, wspace=0.05, align_labels=False, title_loc=0.0, label_loc=0.0, highlight=False, save='', fmt='png'):
+def plot_stats(df, demos=False, oddsratio=True, fig=None, ax=None, ax_outer=None, fignum=1, figidx=0, figsize=2, stack_h=True, 
+    title='', subtitle=[], xlabel='', subxlabel=[], tick_suffix='', label_suffix='', label_text='', ylabel=True, bars=False, factor=0.4, 
+    signsize=10, ticksize=10, labelsize=10, titlesize=12, subtitlesize=12, hspace=0.3, wspace=0.05, widespace=1, align_labels=False, 
+    title_loc=0.0, label_loc=0.0, highlight=False, show=True, capitalize=False, identical_counts=False, save='', fmt='pdf'):
     if not isinstance(df, list): df = [df]
     if isinstance(subtitle, str): subtitle = [subtitle]*len(df)
     if isinstance(subxlabel, str): subxlabel = [subxlabel]*len(df)
@@ -542,13 +545,32 @@ def plot_stats(df, demos=False, oddsratio=True, title='', subtitle=[], xlabel=''
     att_cat = multi2index(atts, tick_suffix)
     rows = len(att_cat)
     rows_per = [len(att_cat[k]['idx']) for k in att_cat]
-    fig, ax = plt.subplots(nrows=rows, ncols=cols, dpi=180, sharex='col', figsize=(3*cols, factor*sum(rows_per)),
-                           gridspec_kw={'height_ratios': rows_per}, constrained_layout=not(bool(xlabel)))
-    if len(ax.shape)==1:
-        if cols==1: ax = ax[:,np.newaxis]
-        else: ax = ax[np.newaxis,:]
+    if fig is None:
+        if fignum>1:
+            if stack_h:
+                fig = plt.figure(dpi=180, figsize=(figsize*(cols*fignum+(fignum-1)*widespace), factor*sum(rows_per)))
+                grid = fig.add_gridspec(nrows=1, ncols=fignum, wspace=widespace/cols)
+                ax = np.empty((rows, cols*fignum), dtype=object)
+                ax_outer = np.empty(fignum, dtype=object)
+                for i in range(fignum):
+                    ax_outer[i] = fig.add_subplot(grid[i], frame_on=False, xticks=[], yticks=[])
+                    inner = grid[i].subgridspec(nrows=rows, ncols=cols, hspace=hspace/sum(rows_per), wspace=wspace, height_ratios=rows_per)
+                    for j in range(rows):
+                        for k in range(cols): ax[j,i*cols+k] = fig.add_subplot(inner[j, k])
+            else:
+                fig = plt.figure(dpi=180, figsize=(figsize*cols, factor*(sum(rows_per)*fignum+(fignum-1)*widespace)))
+                grid = fig.add_gridspec(nrows=fignum, ncols=1, hspace=widespace/sum(rows_per))
+                ax = np.empty((rows*fignum, cols), dtype=object)
+                ax_outer = np.empty(fignum, dtype=object)
+                for i in range(fignum):
+                    ax_outer[i] = fig.add_subplot(grid[i], frame_on=False, xticks=[], yticks=[])
+                    inner = grid[i].subgridspec(nrows=rows, ncols=cols, hspace=hspace/sum(rows_per), wspace=wspace, height_ratios=rows_per)
+                    for j in range(rows):
+                        for k in range(cols): ax[i*rows+j,k] = fig.add_subplot(inner[j, k])
+        else:
+            fig, ax = plt.subplots(nrows=rows, ncols=cols, dpi=180, figsize=(figsize*cols, factor*sum(rows_per)), gridspec_kw={'hspace':hspace, 'wspace':wspace, 'height_ratios': rows_per}, squeeze=False)
+            ax_outer = [fig.add_subplot(111, frame_on=False, xticks=[], yticks=[])]
     names = list(att_cat.keys())
-    
     def plot_bars(ax, tmp, ticks=[], right=False, base=False):
         num = tmp.shape[0]
         if highlight: colors = ['k' if tmp['2.5%'][tmp.index[i]]<oddsratio<tmp['97.5%'][tmp.index[i]] else 'r' for i in range(num)]
@@ -567,7 +589,9 @@ def plot_stats(df, demos=False, oddsratio=True, title='', subtitle=[], xlabel=''
                     if lb<0: ax.text(lb, num-i, '*', size=signsize)
                     else: ax.text(ub, num-i, '*', size=signsize)
         else: ax.set_ylim(1-0.5, num+0.5)
-        if ticks: t = range(1, num+1)
+        if ticks:
+            t = range(1, num+1)
+            if capitalize: ticks = [x.capitalize() if not x.isupper() else x for x in ticks]
         else: t = []
         ax.axvline(oddsratio, ls=':', color='gray')
         ax.yaxis.set_ticklabels(reversed(ticks))
@@ -576,51 +600,32 @@ def plot_stats(df, demos=False, oddsratio=True, title='', subtitle=[], xlabel=''
     
     for i in range(rows):
         for j in range(cols):
+            if stack_h: u, v = i, cols*figidx+j
+            else: u, v = rows*figidx+i, j
             if j==0:
-                plot_bars(ax[i,j], df[j].loc[att_cat[names[i]]['idx']], att_cat[names[i]]['val'])
-                if ylabel: ax[i,j].set_ylabel(names[i]+label_suffix, fontweight='bold', fontsize=labelsize)
+                plot_bars(ax[u,v], df[j].loc[att_cat[names[i]]['idx']], att_cat[names[i]]['val'])
+                if ylabel: ax[u,v].set_ylabel(names[i]+label_suffix, fontweight='bold', fontsize=labelsize)
             elif j==cols-1:
-                try: c = [', '.join(list(map(lambda y: str(y), x))) for x in np.array([df[k]['counts'][att_cat[names[i]]['idx']].values for k in range(cols)]).T]
+                try:
+                    if identical_counts: c = list(map(lambda y: str(int(y)), df[0]['counts'][att_cat[names[i]]['idx']].values))
+                    else: c = [', '.join(list(map(lambda y: str(int(y)), x))) for x in np.array([df[k]['counts'][att_cat[names[i]]['idx']].values for k in range(cols)]).T]
                 except: c = []
-                plot_bars(ax[i,j], df[j].loc[att_cat[names[i]]['idx']], c, right=True)
-            else: plot_bars(ax[i,j], df[j].loc[att_cat[names[i]]['idx']])
-            if i==0 and subtitle: ax[i,j].set_title(subtitle[j], fontsize=subtitlesize)
-            if i==rows-1 and subxlabel: ax[i,j].set_xlabel(subxlabel[j], fontsize=labelsize)
+                plot_bars(ax[u,v], df[j].loc[att_cat[names[i]]['idx']], c, right=True)
+            else: plot_bars(ax[u,v], df[j].loc[att_cat[names[i]]['idx']])
+            if i==0 and subtitle and (stack_h or not(figidx)): ax[u,v].set_title(subtitle[j], fontsize=subtitlesize)
+            if i==rows-1 and subxlabel: ax[u,v].set_xlabel(subxlabel[j], fontsize=labelsize)
 
     if align_labels: fig.align_ylabels()
-    if title: plt.suptitle(title, fontsize=titlesize, y=1+title_loc)
-    fig.add_subplot(111, frameon=False)
-    plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
-    if xlabel: plt.xlabel(xlabel)
-    ax = plt.gca()
-    if label_text: ax.text(1+label_loc, 1.01, label_text, size=subtitlesize, transform=ax.transAxes)
-    plt.subplots_adjust(hspace=hspace, wspace=wspace)
+    if title: ax_outer[figidx].set_title(title, fontweight='bold', fontsize=titlesize, y=1+title_loc)
+    if label_text and (stack_h or not(figidx)): ax_outer[figidx].text(1+label_loc, 1.01, label_text, size=subtitlesize, transform=ax_outer[figidx].transAxes)    
+    if xlabel and (stack_h or figidx==fignum-1): ax_outer[figidx].set_xlabel(xlabel)
+    #plt.subplots_adjust(hspace=hspace, wspace=wspace)
     #fig.tight_layout()
     if save: plt.savefig('%s.%s'%(save, fmt), dpi=180, bbox_inches='tight')
-    plt.show()
-    return
+    if show: plt.show()
+    return fig, ax, ax_outer
 
-def plot_causal_flow_(df, df_T, df_C, title='', save='', fmt='png'):
-    def plot_sankey(group, dat):
-        import plotly.graph_objects as go
-        src, tgt, val = [], [], []
-        labs = ['Yes, definitely', 'Unsure, lean yes', 'Unsure, lean no', 'No, definitely not']*2
-        for i in range(4):
-            for j in range(4, 8):
-                src.append(i)
-                tgt.append(j)
-                val.append(df.loc[(group,labs[i],labs[j]), 'mean']*dat.loc[('Pre Exposure',labs[i]), 'mean'])
-        fig = go.Figure(data=[go.Sankey( 
-        node = dict(pad=15, thickness=40, line=dict(color='salmon', width=0.5), color='salmon',
-                    label=['[%i] %s'%(round(100*y), x) for x, y in zip(labs[:4], dat.loc['Pre Exposure', 'mean'])]+['%s [%i]'%(x, round(100*y)) for x, y in zip(labs[4:], dat.loc['Post Exposure', 'mean'])]),
-        link = dict(source=src, target=tgt, value=val))])
-        fig.update_layout(title_text='%s %s'%(title, group), font_size=20)
-        fig.show()
-        if save: fig.write_image('%s_%s.%s'%(save, group, fmt), scale=4)
-    plot_sankey('Treatment', df_T)
-    plot_sankey('Control', df_C)
-
-def plot_causal_flow(df, title='', save='', fmt='png'):
+def plot_causal_flow(df, title='', save='', fmt='pdf'):
     def plot_sankey(group):
         import plotly.graph_objects as go
         src, tgt, val = [], [], []
@@ -717,13 +722,13 @@ def mean_image_perceptions(df, melt=True, save=''):
     if save: out.to_csv('%s.csv'%save)
     return out
 
-def plot_image_perceptions(df, ylab=[], imagewise=False, legend_loc=(0.07, -0.1), save='', fmt='png'):
+def plot_image_perceptions(df, ylab=[], label_image=False, imagewise=False, legend_space=0.2, legend_loc=(0.5, 0.5), labelsize=12, legendsize=12, figsize=2, save='', fmt='pdf'):
     import numpy as np
     import matplotlib.pyplot as plt
     import matplotlib
     
     if not isinstance(df, list): df = [df]
-    questions = {'Vaccine Intent': 'Raises Vaccine Intent', 'Agreement': 'Agree with information', 'Trust': 'Have trust in', 'Fact-check': 'Will fact-check', 'Share': 'Will share'}
+    questions = {'Vaccine Intent': 'Raises vaccine intent', 'Agreement': 'Agree with information', 'Trust': 'Have trust in', 'Fact-check': 'Will fact-check', 'Share': 'Will share'}
     categories = dict(zip(['p[%i]'%(i+1) for i in range(5)], ['Strongly disagree', 'Somewhat disagree', 'Neither', 'Somewhat agree', 'Strongly agree']))
     
     def survey(results, category_names, ax=None):
@@ -746,6 +751,7 @@ def plot_image_perceptions(df, ylab=[], imagewise=False, legend_loc=(0.07, -0.1)
         if ax is None: fig, ax = plt.subplots(dpi=90, figsize=(5, 5))
         ax.invert_yaxis()
         ax.xaxis.set_visible(False)
+        if not label_image: ax.set_yticks([])
         ax.set_xlim(0, np.sum(data, axis=1).max())
 
         for i, (colname, color) in enumerate(zip(category_names, category_colors)):
@@ -759,13 +765,14 @@ def plot_image_perceptions(df, ylab=[], imagewise=False, legend_loc=(0.07, -0.1)
                 ax.text(x, y, str(int(100*c)), ha='center', va='center', color=text_color)
         return ax
     
-    matplotlib.rc('font', size=18)
     nrows = len(df)
-    fig, ax = plt.subplots(nrows=nrows, ncols=5, dpi=90, figsize=(25, 5*nrows))#, constrained_layout=True)
-    ax_sup = fig.add_subplot(111, frameon=False)
-    plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
-    #plt.subplots_adjust(hspace=hspace, wspace=wspace)
-    if nrows==1: ax = ax[np.newaxis,:]
+    fig = plt.figure(dpi=180, figsize=(figsize*5, figsize*(nrows+legend_space)), constrained_layout=not(label_image))
+    grid = fig.add_gridspec(nrows=2, ncols=1, hspace=0, height_ratios=[nrows, legend_space])
+    inner = grid[0].subgridspec(nrows=nrows, ncols=5)
+    ax = np.empty((nrows, 5), dtype=object)
+    ax_outer = fig.add_subplot(grid[1], frame_on=False, xticks=[], yticks=[])
+    for i in range(nrows):
+        for j in range(5): ax[i,j] = fig.add_subplot(inner[i, j])
     if imagewise:
         for p in range(nrows):
             for i in range(5):
@@ -773,7 +780,7 @@ def plot_image_perceptions(df, ylab=[], imagewise=False, legend_loc=(0.07, -0.1)
                 results['Raises Vaccine Intent'] = results['Raises Vaccine Intent'][::-1]
                 survey(results, categories.values(), ax[p,i])
                 if p==0: ax[p,i].set_title('Image %i'%(i+1))
-                if i==0 and ylab: ax[p,i].set_ylabel(ylab[p], fontsize=24, fontweight='bold')
+                if i==0 and ylab: ax[p,i].set_ylabel(ylab[p], fontsize=labelsize, fontweight='bold')
     else:
         for p in range(nrows):
             flag = True
@@ -783,11 +790,12 @@ def plot_image_perceptions(df, ylab=[], imagewise=False, legend_loc=(0.07, -0.1)
                 survey(results, categories.values(), a)
                 if p==0: a.set_title(questions[j])
                 if flag and ylab:
-                    a.set_ylabel(ylab[p], fontsize=24, fontweight='bold')
+                    a.set_ylabel(ylab[p], fontsize=labelsize, fontweight='bold')
                     flag = False
-    plt.tight_layout()
+    if label_image: plt.tight_layout()
     handles, labels = ax[0,0].get_legend_handles_labels()
-    ax_sup.legend(handles=handles, labels=labels, ncol=5, bbox_to_anchor=legend_loc, loc='lower left', fontsize=22.5)
+    ax_outer.legend(handles=handles, labels=labels, ncol=5, bbox_to_anchor=legend_loc, loc='center', fontsize=legendsize, shadow=False, edgecolor='white')
+    #plt.tight_layout()
     if save: plt.savefig('%s.%s'%(save, fmt), dpi=180, bbox_inches='tight')
     plt.show()
 
@@ -921,10 +929,14 @@ def combine_idx(multiindex_l, multiindex_r):
     return index_lr
 
 def combine_dfs(df_l, df_r, lsuffix='(1)', rsuffix='(2)', multi=True, axis=1, atts=[], reset=True, retain_order=True, fillna='-', save=''):
-    if multi:
+    if multi or axis==0:
         import pandas as pd
         df = pd.concat({lsuffix: df_l, rsuffix: df_r}, axis=axis)
-    else: df = df_l.join(df_r, lsuffix=' '+lsuffix, rsuffix=' '+rsuffix, how='outer')
+    if not multi:
+        if axis==1: df = df_l.join(df_r, lsuffix=' '+lsuffix, rsuffix=' '+rsuffix, how='outer')
+        else:
+            idx = zip(df.index, (map(lambda x: ('%s %s'%(x[1], x[0]),)+x[2:], df.index)))
+            df = pd.DataFrame.from_dict({new: df.loc[old] for old, new in idx}, orient='index')
     if retain_order and axis==1: df = df.loc[combine_idx(df_l.index, df_r.index)]
     if atts: df = subset_df(df, atts, reset=reset)
     if fillna: df.fillna(fillna, inplace=True)
