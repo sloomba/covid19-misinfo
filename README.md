@@ -1,5 +1,6 @@
 # Measuring the impact of COVID-19 vaccine misinformation on vaccination intent in the UK and USA
 *Sahil Loomba, Alexandre de Figueiredo, Simon Piatek, Kristen de Graaf, Heidi Larson*
+
 This repository contains code and data for our paper in [*Nature Human Behaviour*](https://www.nature.com/articles/s41562-021-01056-1) on measuring the impact of exposure to COVID-19 vaccine misinformation on the intent to vaccinate in the UK and USA.
 
 ## Jupyter Notebooks
